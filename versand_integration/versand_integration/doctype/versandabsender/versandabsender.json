@@ -69,10 +69,10 @@
   {"fieldname": "return_city", "fieldtype": "Data", "label": "Ort", "depends_on": "eval:!doc.return_same_as_sender"},
   {"fieldname": "return_country", "fieldtype": "Data", "label": "Land", "depends_on": "eval:!doc.return_same_as_sender"},
 
-  {"fieldname": "section_dhl", "fieldtype": "Section Break", "label": "DHL"},
-  {"fieldname": "dhl_billing_numbers", "fieldtype": "Table", "label": "Abrechnungsnummern je Produkt", "options": "Versandabsender DHL Abrechnungsnummer", "description": "Pro DHL-Produkt die passende 14-stellige Abrechnungsnummer dieser Marke."},
-  {"fieldname": "dhl_billing_number_return", "fieldtype": "Data", "label": "Abrechnungsnummer Retoure"},
-  {"fieldname": "dhl_profile", "fieldtype": "Data", "label": "DHL-Profil", "default": "STANDARD_GRUPPENPROFIL"},
+  {"fieldname": "section_dhl", "fieldtype": "Section Break", "label": "DHL (nur Abweichungen)", "collapsible": 1},
+  {"fieldname": "dhl_billing_numbers", "fieldtype": "Table", "label": "Abrechnungsnummern je Produkt (Override)", "options": "DHL Abrechnungsnummer", "description": "Nur ausfüllen, wenn diese Marke andere Abrechnungsnummern als die DHL Settings hat. Sonst leer lassen – dann gelten die globalen Nummern."},
+  {"fieldname": "dhl_billing_number_return", "fieldtype": "Data", "label": "Abrechnungsnummer Retoure (Override)"},
+  {"fieldname": "dhl_profile", "fieldtype": "Data", "label": "DHL-Profil (Override)"},
 
   {"fieldname": "section_dpd", "fieldtype": "Section Break", "label": "DPD", "collapsible": 1},
   {"fieldname": "dpd_sending_depot", "fieldtype": "Data", "label": "Sende-Depot (optional)"}

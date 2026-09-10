@@ -57,12 +57,30 @@ def resolve(shipment) -> ResolvedAbsender:
 	return _from_settings(shipment.carrier)
 
 
+def _dhl_billing_from_settings() -> tuple[dict, str | None]:
+	"""Globale DHL-Abrechnungsnummern: Tabelle in den DHL Settings + einfacher Fallback."""
+	try:
+		s = frappe.get_cached_doc("DHL Settings")
+	except frappe.DoesNotExistError:
+		return {}, None
+	by_code = {}
+	for row in getattr(s, "dhl_billing_numbers", None) or []:
+		code = DHL_C.resolve_product(row.product)
+		if code and row.billing_number:
+			by_code[code] = row.billing_number.strip()
+	return by_code, (s.billing_number or None)
+
+
 def _from_doc(doc) -> ResolvedAbsender:
-	billing_by_code = {}
+	# Basis: globale Nummern aus den DHL Settings, dann Marken-Overrides drüber.
+	by_code, settings_fallback = _dhl_billing_from_settings()
+	overrides = {}
 	for row in doc.dhl_billing_numbers or []:
 		code = DHL_C.resolve_product(row.product)
 		if code and row.billing_number:
-			billing_by_code[code] = row.billing_number.strip()
+			overrides[code] = row.billing_number.strip()
+	by_code = {**by_code, **overrides}
+
 	return ResolvedAbsender(
 		source=f"Versandabsender:{doc.name}",
 		name1=doc.name1,
@@ -78,8 +96,8 @@ def _from_doc(doc) -> ResolvedAbsender:
 		dhl_profile=doc.dhl_profile or None,
 		dhl_billing_number_return=doc.dhl_billing_number_return or None,
 		dpd_sending_depot=doc.dpd_sending_depot or None,
-		_dhl_billing_by_code=billing_by_code,
-		_dhl_billing_fallback=next(iter(billing_by_code.values()), None),
+		_dhl_billing_by_code=by_code,
+		_dhl_billing_fallback=next(iter(overrides.values()), None) or settings_fallback,
 	)
 
 
@@ -113,6 +131,7 @@ def _from_settings(carrier: str) -> ResolvedAbsender:
 		)
 
 	s = frappe.get_cached_doc("DHL Settings")
+	by_code, fallback = _dhl_billing_from_settings()
 	return ResolvedAbsender(
 		source="DHL Settings",
 		name1=s.shipper_name1 or "",
@@ -126,5 +145,6 @@ def _from_settings(carrier: str) -> ResolvedAbsender:
 		email=s.shipper_email,
 		phone=s.shipper_phone,
 		dhl_profile=s.profile or None,
-		_dhl_billing_fallback=(s.billing_number or None),
+		_dhl_billing_by_code=by_code,
+		_dhl_billing_fallback=fallback,
 	)

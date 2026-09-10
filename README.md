@@ -45,8 +45,15 @@ Eine ERPNext-Company, mehrere Marken (z. B. *FranceTec*, *Schmelzkammer*,
 * Absender- und Retourenadresse, E-Mail/Telefon
 * **Briefkopf** (Letter Head) → landet automatisch auf Auftrag/Lieferschein/Rechnung,
   solange dort noch keiner gesetzt ist (unterschiedliche Logos je Marke)
-* **DHL: Abrechnungsnummern je Produkt** (jede Marke hat i. d. R. eigene) + DHL-Profil
-* DPD: optionales Sende-Depot
+* DHL/DPD-Overrides **nur falls nötig** – siehe Abrechnungsnummern unten
+
+### DHL-Abrechnungsnummern
+
+Gleiche EKP, je Produkt eine eigene 14-stellige Nummer (Stelle 11–12 = Produktnummer):
+in den **DHL Settings → „Abrechnungsnummern je Produkt"** einmal global eintragen.
+Nur wenn eine Marke einen komplett eigenen DHL-Vertrag hat, im jeweiligen
+Versandabsender die abweichenden Nummern als **Override** setzen. Reihenfolge:
+Versandabsender-Override → DHL-Settings-Tabelle → einfaches Fallback-Feld → (Sandbox) Testnummer.
 
 **Zuordnung** je Lieferschein (Feld *Versandabsender / Marke*):
 Kunde → Auftrag → Lieferschein (wird durchgereicht), sonst der als *Standard*
@@ -128,6 +135,11 @@ DHL-Codes: DHL Paket (national) = `V01PAK`, DHL Paket International = `V53WPAK`,
 DHL Europaket = `V54EPAK`, DHL Kleinpaket = `V62KP`, Warenpost = `V62WP`,
 Warenpost International = `V66WPI`. Jedes Produkt braucht eine dazu passende
 Abrechnungsnummer (Stelle 11–12 = Produktnummer).
+
+**Zusatzleistungen (VAS):** je Sendung ankreuzbar – u. a. **Premium**
+(bevorzugte Behandlung, v. a. Ausland) und **GoGreen Plus** (klimafreundlich).
+In den DHL Settings als Standard setzbar: „Premium bei Auslandssendungen"
+(greift automatisch bei V53WPAK/V54EPAK/V66WPI) und „GoGreen Plus immer aktiv".
 
 > Herstellerdoku (DHL-OpenAPI-Spec, DPD-WSDL/PDFs, Internetmarke-WSDL) wird lokal
 > unter `Info DHL Paket/`, `Info DPD/`, `Infos Porto/` gehalten – gitignored.
