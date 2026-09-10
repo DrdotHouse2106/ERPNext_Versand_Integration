@@ -50,6 +50,23 @@ CUSTOM_FIELDS = {
 			"fetch_from": "customer.vi_versandabsender",
 			"fetch_if_empty": 1,
 		},
+		{
+			"fieldname": "vi_tracking_status",
+			"label": "Tracking-Status",
+			"fieldtype": "Data",
+			"insert_after": "vi_versandabsender",
+			"read_only": 1,
+			"no_copy": 1,
+			"in_standard_filter": 1,
+		},
+		{
+			"fieldname": "vi_tracking_delivered_on",
+			"label": "Zugestellt am",
+			"fieldtype": "Datetime",
+			"insert_after": "vi_tracking_status",
+			"read_only": 1,
+			"no_copy": 1,
+		},
 	],
 	"Sales Order": [
 		{
@@ -86,7 +103,12 @@ CUSTOM_FIELDS = {
 }
 
 
-SINGLETONS = ("DHL Settings", "DPD Settings", "Deutsche Post Settings")
+SINGLETONS = (
+	"DHL Settings",
+	"DPD Settings",
+	"Deutsche Post Settings",
+	"Versand Integration Settings",
+)
 
 
 def after_install():

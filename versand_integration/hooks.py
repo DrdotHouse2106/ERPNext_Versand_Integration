@@ -26,6 +26,13 @@ doc_events = {
 }
 
 # ---------------------------------------------------------------------------
+# Zeitgesteuert: Sendungsverfolgung
+# ---------------------------------------------------------------------------
+scheduler_events = {
+	"hourly_long": ["versand_integration.tracking.poll_open_shipments"],
+}
+
+# ---------------------------------------------------------------------------
 # Installation / Migration
 # ---------------------------------------------------------------------------
 after_install = "versand_integration.setup.install.after_install"
@@ -46,6 +53,8 @@ fixtures = [
 			"Delivery Note-vi_sendungsnummer",
 			"Delivery Note-vi_tracking_url",
 			"Delivery Note-vi_versandabsender",
+			"Delivery Note-vi_tracking_status",
+			"Delivery Note-vi_tracking_delivered_on",
 			"Sales Order-vi_versandabsender",
 			"Sales Invoice-vi_versandabsender",
 			"Customer-vi_versandabsender",

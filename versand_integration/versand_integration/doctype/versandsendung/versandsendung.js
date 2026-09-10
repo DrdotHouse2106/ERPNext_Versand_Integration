@@ -30,6 +30,42 @@ frappe.ui.form.on("Versandsendung", {
 		if (frm.doc.tracking_url) {
 			frm.add_custom_button(__("Sendung verfolgen"), () => window.open(frm.doc.tracking_url, "_blank"));
 		}
+
+		if (frm.doc.shipment_number && frm.doc.carrier !== "Deutsche Post") {
+			frm.add_custom_button(__("Tracking aktualisieren"), () => {
+				frm.call({
+					doc: frm.doc,
+					method: "refresh_tracking",
+					freeze: true,
+					freeze_message: __("Status wird beim Carrier abgefragt …"),
+				}).then((r) => {
+					if (r.message) {
+						frappe.show_alert({
+							message: __("Status: {0}", [r.message.status || "?"]),
+							indicator: r.message.status === "Zugestellt" ? "green" : "blue",
+						});
+						frm.reload_doc();
+					}
+				});
+			});
+		}
+
+		const colors = {
+			"Zugestellt": "green",
+			"Zustellproblem": "red",
+			"Retoure": "orange",
+			"In Zustellung": "blue",
+			"In Transport": "blue",
+			"Abgeholt": "blue",
+			"Angekündigt": "gray",
+			"Unbekannt": "gray",
+		};
+		if (frm.doc.tracking_status) {
+			frm.dashboard.add_indicator(
+				__("Tracking: {0}", [frm.doc.tracking_status]),
+				colors[frm.doc.tracking_status] || "gray"
+			);
+		}
 	},
 
 	delivery_note(frm) {

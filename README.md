@@ -21,9 +21,10 @@ Geschrieben für **Frappe / ERPNext v15–v16**. Python-Abhängigkeit: `zeep` (S
 
 | Objekt | Zweck |
 | --- | --- |
-| **DHL Settings** / **DPD Settings** / **Deutsche Post Settings** (je Single) | Zugangsdaten, Fallback-Absender, Voreinstellungen, „Verbindung testen" |
+| **DHL / DPD / Deutsche Post Settings** (je Single) | Zugangsdaten, Fallback-Absender, Voreinstellungen, „Verbindung testen" |
+| **Versand Integration Settings** (Single) | Sendungsverfolgung: Job an/aus, Intervall, Abbruch nach Tagen, Benachrichtigung |
 | **Versandabsender** | Marken-/Absenderprofil: Adresse, Retoure, Briefkopf, DHL-Abrechnungsnummern je Produkt |
-| **Versandsendung** (submittable) | Eine Sendung zu einem Lieferschein: Carrier, Absender, Empfänger, Gewicht/Maße, Services, Mehrcolli, Etikett-PDF, Sendungsnummer, Tracking-Link, API-Protokoll |
+| **Versandsendung** (submittable) | Sendung zu einem Lieferschein: Carrier, Absender, Empfänger, Maße, Services, Mehrcolli, Etikett-PDF, Sendungsnummer, **Tracking-Status + Verlauf**, API-Protokoll |
 | **Versandsendung Paket** (Child) | Einzelne Colli bei Mehrpaketsendungen (DHL/DPD) |
 | Button **„Versandetikett erstellen"** im *Lieferschein* | Carrier wählen → Versandsendung anlegen, API rufen, PDF anhängen & öffnen |
 | Custom Fields am *Lieferschein* | `Versandsendung`, `Sendungsnummer`, `Sendungsverfolgung` |
@@ -34,6 +35,28 @@ Versandsendung. Storno der Versandsendung:
 * DHL – Sendung wird per `DELETE /orders` gelöscht.
 * DPD – nicht nötig (nicht manifestierte Sendungen einfach nicht abschließen).
 * Deutsche Post – Erstattung läuft über den separaten Dienst 1C4Refund (nicht in dieser App).
+
+---
+
+## Sendungsverfolgung
+
+Nach dem Etikett läuft der Status automatisch nach:
+
+* **Versandsendung → Abschnitt „Sendungsverfolgung"**: Status
+  (Angekündigt · Abgeholt · In Transport · In Zustellung · **Zugestellt** ·
+  Zustellproblem · Retoure), Carrier-Statustext, „Zugestellt am" und ein
+  Ereignis-Verlauf. Button **„Tracking aktualisieren"** für sofort.
+* **Lieferschein**: Status + „Zugestellt am" gespiegelt, als Spalte/Filter in der Liste.
+* **Hintergrund-Job** (`hourly_long`) aktualisiert alle offenen, gebuchten Sendungen;
+  stoppt nach Zustellung/Retoure bzw. nach *X* Tagen (Standard 21).
+* **Arbeitsfläche „Versand"** mit Kennzahlen *Sendungen unterwegs* /
+  *Zustellprobleme* und Schnellzugriffen.
+* **Benachrichtigung** bei *Zustellproblem*/*Retoure* an alle Nutzer einer Rolle
+  (Standard *Stock Manager*), optional zusätzlich per E-Mail.
+
+Konfiguration: **Versand Integration Settings**. Quellen:
+DHL = „Parcel DE Tracking"-API (nur API-Key), DPD = öffentlicher
+tracking.dpd.de-Endpunkt (best effort), Deutsche Post = kein Tracking für Briefe.
 
 ---
 
@@ -192,12 +215,16 @@ versand_integration/
 │   ├── dhl/             # Parcel DE Shipping v2 (REST): constants, client, mapper, carrier
 │   ├── dpd/             # DE WebConnect (SOAP via zeep): constants, client, mapper, carrier
 │   └── deutsche_post/   # Internetmarke 1C4A V3 (SOAP): constants, signature, client, mapper, carrier
+│   └── */tracking.py    # Sendungsverfolgung je Carrier -> TrackingResult
 ├── absender.py          # Versandabsender/Marke -> ResolvedAbsender (Adresse, DHL-Abr.-Nr.)
+├── tracking.py          # scheduler_events.hourly_long: poll_open_shipments()
 ├── api.py               # whitelisted: create_shipment_from_delivery_note(carrier, versandabsender)
-├── setup/install.py     # Custom Fields (inkl. vi_versandabsender), Settings-Singletons
+├── setup/install.py     # Custom Fields (Versandabsender, Tracking-Status), Settings-Singletons
 ├── setup/letter_head.py # Briefkopf aus Versandabsender auf SO/DN/SI
 ├── utils/credentials.py # .secrets/*.json -> Settings (nur self-hosted, zum Testen)
-└── versand_integration/doctype/…   # Settings (DHL/DPD/DP), Versandabsender(+DHL-Abr.-Nr.), Versandsendung(+Paket)
+└── versand_integration/…            # Settings (DHL/DPD/DP + Versand Integration Settings),
+                                     # Versandabsender, Versandsendung(+Paket, +Tracking Event),
+                                     # Workspace „Versand" + Number Cards
 ```
 
 Ein neuer Carrier = neuer Ordner `carriers/<name>/` mit einer `BaseCarrier`-Klasse,
