@@ -1,21 +1,18 @@
 # Deployment
 
-## 1. Git-Repo bei GitHub/GitLab anlegen
+## 1. Git-Repo
 
-Das lokale Repo ist bereits initialisiert (`git init`, erster Commit).
-Remote hinzufügen und pushen:
+Liegt öffentlich unter **https://github.com/DrdotHouse2106/versand_integration**
+(Branch `main`). Updates:
 
 ```bash
 cd /Users/marcelulber/Programmierung/ERPNext_Versand_Integration
-git remote add origin git@github.com:<user>/versand_integration.git
-git branch -M main
-git push -u origin main
+git add -A && git commit -m "..." && git push
 ```
 
-> **Wichtig:** `.secrets/` wird nicht gepusht (steht in `.gitignore`).
-> Prüfe vor dem ersten Push mit `git status`, dass keine echten Zugangsdaten dabei sind.
-
-Empfohlen: Repository **privat**.
+> `.secrets/` und die `Info*/`-Doku-Ordner sind per `.gitignore` ausgeschlossen.
+> Da das Repo **öffentlich** ist: keine echten Keys in getrackte Dateien schreiben –
+> Zugangsdaten gehören in **DHL Settings** (verschlüsselt in der DB).
 
 ---
 
@@ -23,8 +20,8 @@ Empfohlen: Repository **privat**.
 
 1. Frappe-Cloud-Konto → **Bench Group** deiner Site (oder neue Group).
 2. **Apps → Add App → From GitHub** (bzw. „Add your own app").
-3. Frappe Cloud fragt nach der GitHub-Installation → Zugriff auf das
-   `versand_integration`-Repo erlauben.
+3. Frappe Cloud fragt nach der GitHub-Installation → Zugriff auf
+   `DrdotHouse2106/versand_integration` erlauben.
 4. Branch `main` wählen. Frappe Cloud liest `pyproject.toml`
    (App-Name `versand_integration`, benötigt `frappe`, `erpnext`).
 5. **Add** → die App erscheint in der Bench Group.
