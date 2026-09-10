@@ -2,7 +2,7 @@
 
 ## 1. Git-Repo
 
-Liegt öffentlich unter **https://github.com/DrdotHouse2106/versand_integration**
+Liegt öffentlich unter **https://github.com/DrdotHouse2106/ERPNext_Versand_Integration**
 (Branch `main`). Updates:
 
 ```bash
@@ -21,7 +21,7 @@ git add -A && git commit -m "..." && git push
 1. Frappe-Cloud-Konto → **Bench Group** deiner Site (oder neue Group).
 2. **Apps → Add App → From GitHub** (bzw. „Add your own app").
 3. Frappe Cloud fragt nach der GitHub-Installation → Zugriff auf
-   `DrdotHouse2106/versand_integration` erlauben.
+   `DrdotHouse2106/ERPNext_Versand_Integration` erlauben.
 4. Branch `main` wählen. Frappe Cloud liest `pyproject.toml`
    (App-Name `versand_integration`, benötigt `frappe`, `erpnext`).
 5. **Add** → die App erscheint in der Bench Group.
