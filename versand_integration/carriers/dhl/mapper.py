@@ -107,20 +107,21 @@ def _consignee_block(doc):
 INTERNATIONAL_PRODUCTS = {"V53WPAK", "V54EPAK", "V66WPI"}
 
 
-def _services(doc, settings, product_code):
+def _services(doc, settings, product_code, consignee_country_alpha3):
 	services = {}
 
 	premium = bool(doc.service_premium)
 	if (
 		not premium
-		and getattr(settings, "default_premium_international", 0)
+		and getattr(settings, "default_premium_eu", 0)
 		and product_code in INTERNATIONAL_PRODUCTS
+		and consignee_country_alpha3 in C.EU_COUNTRIES
 	):
 		premium = True
 	if premium:
 		services["premium"] = True
 
-	if doc.service_gogreen_plus or getattr(settings, "default_gogreen_plus", 0):
+	if doc.service_gogreen_plus:  # nur wenn an der Sendung explizit gesetzt
 		services["goGreenPlus"] = True
 
 	if doc.service_bulky_goods:
@@ -173,7 +174,7 @@ def build_order_payload(settings, doc, absender) -> dict:
 
 	shipper = _shipper_block(absender)
 	consignee = _consignee_block(doc)
-	services = _services(doc, settings, product)
+	services = _services(doc, settings, product, consignee.get("country"))
 	ship_date = today()
 	profile = absender.dhl_profile or settings.profile or C.DEFAULT_PROFILE
 

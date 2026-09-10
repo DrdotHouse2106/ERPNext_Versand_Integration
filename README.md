@@ -137,9 +137,10 @@ Warenpost International = `V66WPI`. Jedes Produkt braucht eine dazu passende
 Abrechnungsnummer (Stelle 11–12 = Produktnummer).
 
 **Zusatzleistungen (VAS):** je Sendung ankreuzbar – u. a. **Premium**
-(bevorzugte Behandlung, v. a. Ausland) und **GoGreen Plus** (klimafreundlich).
-In den DHL Settings als Standard setzbar: „Premium bei Auslandssendungen"
-(greift automatisch bei V53WPAK/V54EPAK/V66WPI) und „GoGreen Plus immer aktiv".
+(bevorzugte Behandlung) und **GoGreen Plus** (klimafreundlich, nur wenn explizit
+gesetzt). Einzige Automatik: DHL Settings → „Premium bei Sendungen in EU-Länder"
+setzt bei internationalen Produkten automatisch Premium, **wenn das Empfängerland
+in der EU liegt** – außerhalb der EU nicht (dort ist ggf. Economy günstiger).
 
 > Herstellerdoku (DHL-OpenAPI-Spec, DPD-WSDL/PDFs, Internetmarke-WSDL) wird lokal
 > unter `Info DHL Paket/`, `Info DPD/`, `Infos Porto/` gehalten – gitignored.
