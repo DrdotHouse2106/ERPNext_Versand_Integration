@@ -122,6 +122,46 @@ class DPClient:
 		self._post("<v3:ping/>")  # wirft bei Fehler, sonst ok
 		return "ok"
 
+	def retrieve_page_formats(self) -> list[dict]:
+		"""Kostenlos, braucht nur die Partnersignatur (kein Portokasse-Login)."""
+		root = self._post("<v3:RetrievePageFormatsRequest/>")
+		formats = []
+		for pf in root.findall(".//v3:pageFormat", _NS):
+			formats.append(
+				{
+					"id": self._text(pf, "v3:id"),
+					"name": self._text(pf, "v3:name"),
+					"description": self._text(pf, "v3:description"),
+				}
+			)
+		return formats
+
+	def retrieve_preview_voucher_pdf(
+		self, *, product_code: str, voucher_layout: str, page_format_id: int, image_id: str | None
+	) -> dict:
+		"""Vorschaumarke – KOSTENLOS, kein Portokasse-Abzug, kein userToken nötig.
+
+		Die zurückgegebene PDF ist als Muster gekennzeichnet und nicht versandfähig.
+		"""
+		image_xml = f"<v3:imageID>{escape(str(image_id))}</v3:imageID>" if image_id else ""
+		body = (
+			"<v3:RetrievePreviewVoucherPDFRequest>"
+			f"<v3:productCode>{escape(product_code)}</v3:productCode>"
+			f"{image_xml}"
+			f"<v3:voucherLayout>{escape(voucher_layout)}</v3:voucherLayout>"
+			f"<v3:pageFormatId>{int(page_format_id)}</v3:pageFormatId>"
+			"</v3:RetrievePreviewVoucherPDFRequest>"
+		)
+		root = self._post(body)
+		resp = root.find(".//v3:RetrievePreviewVoucherPDFResponse", _NS)
+		link = self._text(resp, "v3:link") if resp is not None else None
+		if not link:
+			raise CarrierAPIError(
+				_("Internetmarke: Vorschau ohne PDF-Link."),
+				raw=ET.tostring(root, encoding="unicode"),
+			)
+		return {"link": link, "raw": ET.tostring(root, encoding="unicode")}
+
 	def checkout_shopping_cart_pdf(
 		self,
 		user_token: str,
@@ -171,11 +211,26 @@ class DPClient:
 
 	# ------------------------------------------------------------ self-test
 	def test_connection(self) -> dict:
-		auth = self.authenticate_user()
-		return {
-			"ok": True,
-			"wallet_balance": auth.get("wallet_balance"),
-			"messages": [
-				_("Login ok. Portokasse-Guthaben: {0}").format(auth.get("wallet_balance") or "?")
-			],
-		}
+		messages = []
+
+		# 1) Partner-Signatur/Zugang prüfen (kostenlos, ohne Portokasse-Login)
+		try:
+			formats = self.retrieve_page_formats()
+			messages.append(
+				_("Partner-Zugang ok – {0} Seitenformate verfügbar.").format(len(formats))
+			)
+		except CarrierAPIError as exc:
+			raise CarrierAPIError(
+				_("Partner-Zugang/Signatur fehlgeschlagen: {0}").format(exc)
+			) from exc
+
+		# 2) Portokasse-Login prüfen (kostenlos, zeigt Guthaben)
+		wallet = None
+		try:
+			auth = self.authenticate_user()
+			wallet = auth.get("wallet_balance")
+			messages.append(_("Portokasse-Login ok. Guthaben: {0}").format(wallet or "?"))
+		except CarrierAPIError as exc:
+			messages.append(_("Portokasse-Login fehlgeschlagen: {0}").format(exc))
+
+		return {"ok": True, "wallet_balance": wallet, "messages": messages}

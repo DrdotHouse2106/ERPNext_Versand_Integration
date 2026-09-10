@@ -48,7 +48,9 @@ und wird von Frappe Cloud beim Image-Build automatisch mitinstalliert. Self-host
    → Carrier wählen.
 
 > **DPD**: nur DELIS-ID + Passwort nötig, `sendingDepot` kommt aus dem Login.
-> **Deutsche Post**: BETA – braucht Partnervertrag + Portokasse-Konto, kein Sandbox.
+> **Deutsche Post**: BETA. Kein Testaccount – Modus auf *Vorschau* lassen
+> (`retrievePreviewVoucherPDF`, kostenlos, Muster-PDF). Erst auf *Produktiv*
+> stellen, wenn echte Marken (mit Portokasse-Abzug) gedruckt werden sollen.
 
 ---
 

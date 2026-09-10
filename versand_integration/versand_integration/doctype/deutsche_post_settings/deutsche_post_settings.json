@@ -6,6 +6,7 @@
  "engine": "InnoDB",
  "field_order": [
   "beta_html",
+  "mode",
   "section_partner",
   "partner_id",
   "key",
@@ -18,6 +19,7 @@
   "default_page_format_id",
   "voucher_layout",
   "image_id",
+  "preview_image_id",
   "column_break_defaults",
   "default_franking_cent",
   "auto_submit",
@@ -32,7 +34,8 @@
   "sender_country"
  ],
  "fields": [
-  {"fieldname": "beta_html", "fieldtype": "HTML", "options": "<div class=\"alert alert-warning\">Internetmarke-Anbindung ist <b>BETA</b> und wurde noch nicht gegen echte Zugangsdaten getestet.</div>"},
+  {"fieldname": "beta_html", "fieldtype": "HTML", "options": "<div class=\"alert alert-warning\">Internetmarke-Anbindung ist <b>BETA</b>. Es gibt <b>keinen Testaccount</b> – im Modus <i>Produktiv</i> wird die Portokasse belastet. Zum Testen den Modus <i>Vorschau</i> nutzen (kostenlos).</div>"},
+  {"fieldname": "mode", "fieldtype": "Select", "label": "Modus", "options": "Vorschau (kostenlos)\nProduktiv (Portokasse wird belastet)", "default": "Vorschau (kostenlos)", "reqd": 1, "description": "Vorschau: retrievePreviewVoucherPDF – kostenlos, PDF ist ein nicht versandfähiges Muster. Produktiv: checkoutShoppingCartPDF – echte Marke, Portokasse-Abzug."},
   {"fieldname": "section_partner", "fieldtype": "Section Break", "label": "Partner (1C4A)"},
   {"fieldname": "partner_id", "fieldtype": "Data", "label": "Partner-ID (PARTNER_ID)"},
   {"fieldname": "key", "fieldtype": "Password", "label": "Schlüssel (SCHLUESSEL_DPWN_PARTNER)"},
@@ -45,6 +48,7 @@
   {"fieldname": "default_page_format_id", "fieldtype": "Int", "label": "Seitenformat-ID", "default": 1},
   {"fieldname": "voucher_layout", "fieldtype": "Select", "label": "Marken-Layout", "options": "AddressZone\nFrankingZone", "default": "AddressZone"},
   {"fieldname": "image_id", "fieldtype": "Data", "label": "Motiv-ID (imageID, optional)"},
+  {"fieldname": "preview_image_id", "fieldtype": "Data", "label": "Motiv-ID für Vorschau", "default": "2145969140", "description": "Standard-Motiv aus retrievePublicGallery. Wird nur im Vorschau-Modus verwendet."},
   {"fieldname": "column_break_defaults", "fieldtype": "Column Break"},
   {"fieldname": "default_franking_cent", "fieldtype": "Int", "label": "Standard-Frankierbetrag (Cent)", "description": "z. B. 85 für Standardbrief. Pro Sendung überschreibbar."},
   {"fieldname": "auto_submit", "fieldtype": "Check", "label": "Versandsendung nach Marke automatisch buchen", "default": 1},
