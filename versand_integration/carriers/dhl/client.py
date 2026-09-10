@@ -26,13 +26,19 @@ class DHLClient:
 		self.api_key = (settings.get_password("api_key", raise_exception=False) or "").strip()
 		self.api_secret = (settings.get_password("api_secret", raise_exception=False) or "").strip()
 
+		self.auth_method = settings.auth_method or ("OAuth2" if self.api_secret else "Basic")
+
 		self.gkp_username = (settings.gkp_username or "").strip()
 		self.gkp_password = (settings.get_password("gkp_password", raise_exception=False) or "").strip()
 		if self.sandbox and not self.gkp_username:
-			self.gkp_username = C.SANDBOX_GKP_USERNAME
-			self.gkp_password = C.SANDBOX_GKP_PASSWORD
+			# Offizielle Sandbox-Testzugänge (siehe DHL Onboarding-Collection / Doku).
+			if self.auth_method == "OAuth2":
+				self.gkp_username = C.SANDBOX_OAUTH_USERNAME
+				self.gkp_password = C.SANDBOX_OAUTH_PASSWORD
+			else:
+				self.gkp_username = C.SANDBOX_GKP_USERNAME
+				self.gkp_password = C.SANDBOX_GKP_PASSWORD
 
-		self.auth_method = settings.auth_method or ("OAuth2" if self.api_secret else "Basic")
 		self.print_format = settings.print_format or C.DEFAULT_PRINT_FORMAT
 		self.doc_format = settings.doc_format or C.DEFAULT_DOC_FORMAT
 
@@ -83,11 +89,14 @@ class DHLClient:
 		headers = {
 			"Accept": "application/json",
 			"Content-Type": "application/json",
-			"dhl-api-key": self.api_key,
+			"Accept-Language": "de-DE",
 		}
 		if self.auth_method == "OAuth2":
+			# Bearer-Token genügt (so auch die offizielle DHL-Onboarding-Collection).
 			headers["Authorization"] = f"Bearer {self._oauth_token()}"
 		else:
+			# Klassischer Weg: API-Key-Header + Basic-Auth mit GKP-Zugang.
+			headers["dhl-api-key"] = self.api_key
 			raw = f"{self.gkp_username}:{self.gkp_password}".encode()
 			headers["Authorization"] = "Basic " + base64.b64encode(raw).decode()
 		return headers
@@ -122,22 +131,18 @@ class DHLClient:
 	# --------------------------------------------------------------- public
 	def create_orders(self, payload: dict, *, validate_only: bool = False) -> dict:
 		params = {
-			"includeDocs": "B64",
+			"includeDocs": "include",  # Base64 in der Antwort (label.b64)
 			"docFormat": self.doc_format,
-			"printFormat": self.print_format,
-			"combine": "false",
 		}
+		if self.print_format:
+			params["printFormat"] = self.print_format
 		if validate_only:
 			params["validate"] = "true"
 
 		body = self._request("POST", "/orders", params=params, json_body=payload)
 
-		# 207: pro Item prüfen
-		bad = [
-			it for it in body.get("items", [])
-			if (it.get("sstatus") or {}).get("statusCode", 200) >= 400
-		]
-		if bad:
+		# 207 Multistatus: pro Item den sstatus prüfen
+		if _has_failed_item(body):
 			raise CarrierAPIError(
 				_("DHL hat mindestens eine Sendung abgelehnt."),
 				status_code=207,
@@ -152,9 +157,8 @@ class DHLClient:
 			"/orders",
 			params={
 				"shipment": shipment_number,
-				"includeDocs": "B64",
+				"includeDocs": "include",
 				"docFormat": self.doc_format,
-				"printFormat": self.print_format,
 			},
 		)
 
@@ -226,6 +230,16 @@ def _extract_messages(body: dict) -> list[str]:
 	return out
 
 
+def _status_code(status: dict | None) -> int:
+	status = status or {}
+	# "status" ist aktuell, "statusCode" ist der veraltete Alias.
+	return int(status.get("status") or status.get("statusCode") or 200)
+
+
+def _has_failed_item(body: dict) -> bool:
+	return any(_status_code(it.get("sstatus")) >= 400 for it in body.get("items", []))
+
+
 def _extract_item_messages(body: dict) -> list[str]:
 	out = []
 	for item in body.get("items", []):
@@ -234,6 +248,6 @@ def _extract_item_messages(body: dict) -> list[str]:
 			prop = msg.get("property")
 			out.append(f"{prop}: {text}" if prop and prop not in text else text)
 		sstatus = item.get("sstatus") or {}
-		if sstatus.get("detail"):
+		if sstatus.get("detail") and _status_code(sstatus) >= 400:
 			out.append(sstatus["detail"])
 	return out

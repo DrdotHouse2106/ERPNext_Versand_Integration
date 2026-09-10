@@ -11,15 +11,21 @@ SANDBOX_TOKEN_URL = "https://api-sandbox.dhl.com/parcel/de/account/auth/ropc/v1/
 PRODUCTION_TOKEN_URL = "https://api-eu.dhl.com/parcel/de/account/auth/ropc/v1/token"
 
 # --- Sandbox-Testzugang (öffentlich dokumentiert) -------------------------
-# Basic-Auth-Benutzer des DHL-Geschäftskundenportals in der Sandbox.
+# Klassischer Basic-Auth-Benutzer der Sandbox.
 SANDBOX_GKP_USERNAME = "sandy_sandbox"
 SANDBOX_GKP_PASSWORD = "pass"
-# 14-stellige Abrechnungsnummern (EKP 3333333333 + Verfahren + Teilnahme)
+# OAuth2-(ROPC-)Testbenutzer der Sandbox (DHL Onboarding-Collection).
+SANDBOX_OAUTH_USERNAME = "user-valid"
+SANDBOX_OAUTH_PASSWORD = "SandboxPasswort2023!"
+
+# 14-stellige Abrechnungsnummern der Sandbox (EKP 3333333333 + Verfahren + Teilnahme).
+# "...0102" = mit Services, "...0101" = ohne Services.
 SANDBOX_BILLING_NUMBERS = {
-	"V01PAK": "33333333330101",   # DHL Paket
+	"V01PAK": "33333333330102",   # DHL Paket
 	"V53WPAK": "33333333335301",  # DHL Paket International
 	"V54EPAK": "33333333335401",  # DHL Europaket
-	"V62WP": "33333333330102",    # Warenpost
+	"V62WP": "33333333336201",    # Warenpost (Altname)
+	"V62KP": "33333333336201",    # DHL Kleinpaket
 	"V66WPI": "33333333336601",   # Warenpost International
 }
 SANDBOX_RETURN_BILLING_NUMBER = "33333333330701"
@@ -31,7 +37,8 @@ PRODUCTS = {
 	"V01PAK": "DHL Paket (national)",
 	"V53WPAK": "DHL Paket International",
 	"V54EPAK": "DHL Europaket",
-	"V62WP": "Warenpost",
+	"V62WP": "Warenpost (Altname)",
+	"V62KP": "DHL Kleinpaket",
 	"V66WPI": "Warenpost International",
 }
 
