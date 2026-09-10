@@ -27,6 +27,8 @@ node_modules/
 !.secrets/*.example.json
 
 # Hersteller-Doku / große Binaries (nicht ins Deploy-Repo)
+# "Info DHL Paket/" (OpenAPI-Spec) bleibt bewusst getrackt.
 Infos Porto/
+Info DPD/
 docs/vendor/
 *.zip
