@@ -6,7 +6,7 @@ from frappe.utils import cint
 
 
 @frappe.whitelist()
-def create_shipment_from_delivery_note(delivery_note: str, create_label: int = 1):
+def create_shipment_from_delivery_note(delivery_note: str, create_label: int = 1, carrier: str = "DHL"):
 	"""Erzeugt (oder findet) eine Versandsendung zum Lieferschein und – optional –
 	direkt das Versandetikett.
 
@@ -29,7 +29,7 @@ def create_shipment_from_delivery_note(delivery_note: str, create_label: int = 1
 	else:
 		doc = frappe.new_doc("Versandsendung")
 		doc.delivery_note = delivery_note
-		doc.carrier = "DHL"
+		doc.carrier = carrier or "DHL"
 		doc.insert()
 
 	if cint(create_label) and doc.status != "Etikett erstellt":

@@ -3,11 +3,10 @@ from frappe import _
 
 from versand_integration.carriers.base import BaseCarrier
 
-# Registrierte Carrier. DPD und Deutsche Post / Portokasse sind bewusst noch
-# nicht implementiert – die Architektur (BaseCarrier + LabelResult) ist aber so
-# ausgelegt, dass sie hier nur ergänzt werden müssen.
 _CARRIERS = {
 	"DHL": "versand_integration.carriers.dhl.carrier.DHLCarrier",
+	"DPD": "versand_integration.carriers.dpd.carrier.DPDCarrier",
+	"Deutsche Post": "versand_integration.carriers.deutsche_post.carrier.DeutschePostCarrier",
 }
 
 

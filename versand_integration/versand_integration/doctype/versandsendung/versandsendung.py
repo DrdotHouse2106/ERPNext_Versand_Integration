@@ -90,6 +90,8 @@ class Versandsendung(Document):
 				self.receiver_house_number = house
 
 	def _ensure_weight(self):
+		if self.carrier == "Deutsche Post":
+			return  # Briefe: Gewicht steckt im Produktcode, nicht in der Sendung
 		if self.packages:
 			total = sum(flt(p.weight_kg) for p in self.packages)
 			if total <= 0:
@@ -117,7 +119,7 @@ class Versandsendung(Document):
 			self.status = STATUS_ERROR
 			self.error_message = _format_error(exc)
 			if getattr(exc, "raw", None):
-				self.api_response = json.dumps(exc.raw, indent=2, ensure_ascii=False)
+				self.api_response = json.dumps(exc.raw, indent=2, ensure_ascii=False, default=str)[:100000]
 			self.save(ignore_permissions=True)
 			frappe.db.commit()
 			frappe.throw(self.error_message, title=_("Etikett fehlgeschlagen"))
@@ -125,8 +127,7 @@ class Versandsendung(Document):
 		self._apply_label_result(result)
 		self.save()
 
-		settings = frappe.get_cached_doc("DHL Settings")
-		if cint(settings.auto_submit) and not cint(settings.validate_only):
+		if self._auto_submit_enabled():
 			self.submit()
 		return {
 			"name": self.name,
@@ -136,14 +137,29 @@ class Versandsendung(Document):
 			"label_file": self.label_file,
 		}
 
+	_SETTINGS_DOCTYPE = {
+		"DHL": "DHL Settings",
+		"DPD": "DPD Settings",
+		"Deutsche Post": "Deutsche Post Settings",
+	}
+
+	def _carrier_settings(self):
+		return frappe.get_cached_doc(self._SETTINGS_DOCTYPE.get(self.carrier, "DHL Settings"))
+
+	def _auto_submit_enabled(self) -> bool:
+		settings = self._carrier_settings()
+		if cint(getattr(settings, "validate_only", 0)):
+			return False
+		return bool(cint(getattr(settings, "auto_submit", 1)))
+
 	def _apply_label_result(self, result: LabelResult):
 		self.status = STATUS_CREATED
 		self.error_message = None
 		self.shipment_number = result.shipment_number
 		self.tracking_number = result.tracking_number
 		self.tracking_url = result.tracking_url
-		self.api_request = json.dumps(result.raw_request, indent=2, ensure_ascii=False)
-		self.api_response = json.dumps(result.raw_response, indent=2, ensure_ascii=False)
+		self.api_request = json.dumps(result.raw_request, indent=2, ensure_ascii=False, default=str)
+		self.api_response = json.dumps(result.raw_response, indent=2, ensure_ascii=False, default=str)
 
 		if result.label_b64:
 			self.label_file = self._save_label(

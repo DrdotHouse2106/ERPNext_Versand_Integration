@@ -12,7 +12,8 @@ requires-python = ">=3.11"
 readme = "README.md"
 dynamic = ["version"]
 dependencies = [
-    # Laufzeitabhängigkeiten kommen aus Frappe (requests ist Teil des Frappe-Stacks).
+    # requests kommt aus dem Frappe-Stack.
+    "zeep>=4.2.1",  # SOAP-Client für DPD DE WebConnect (LoginService / ShipmentService)
 ]
 
 [project.urls]

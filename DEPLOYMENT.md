@@ -30,16 +30,25 @@ git add -A && git commit -m "..." && git push
 8. Bei Code-Updates: Commit + Push nach `main` → in Frappe Cloud
    **Update available** → **Deploy**.
 
-Die `after_migrate`-Hook legt die Custom Fields am Lieferschein bei jedem
-Deploy/Migrate neu an, `after_install` zusätzlich den `DHL Settings`-Datensatz.
+Die `after_migrate`-Hook legt die Custom Fields am Lieferschein und die
+Settings-Singletons (DHL / DPD / Deutsche Post) bei jedem Deploy/Migrate an.
+
+Die Python-Abhängigkeit **`zeep`** (SOAP-Client für DPD) steht in `pyproject.toml`
+und wird von Frappe Cloud beim Image-Build automatisch mitinstalliert. Self-hosted:
+`bench pip install zeep` bzw. `bench setup requirements`.
 
 ---
 
 ## 3. Nach der Installation
 
-1. Desk → **DHL Settings** → Umgebung *Sandbox*, Zugangsdaten + Absenderadresse.
+1. Desk → **DHL Settings** (und bei Bedarf **DPD Settings** / **Deutsche Post Settings**)
+   → Umgebung *Sandbox*, Zugangsdaten + Absenderadresse.
 2. **Verbindung testen**.
-3. Einen gebuchten **Lieferschein** öffnen → **Versand → Versandetikett erstellen**.
+3. Einen gebuchten **Lieferschein** öffnen → **Versand → Versandetikett erstellen**
+   → Carrier wählen.
+
+> **DPD**: nur DELIS-ID + Passwort nötig, `sendingDepot` kommt aus dem Login.
+> **Deutsche Post**: BETA – braucht Partnervertrag + Portokasse-Konto, kein Sandbox.
 
 ---
 
