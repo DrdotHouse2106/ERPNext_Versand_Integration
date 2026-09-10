@@ -7,7 +7,7 @@ ohne Drittanbieter-Middleware.
 | --- | --- | --- |
 | **DHL** | Parcel DE Shipping v2 (REST, OAuth2/Basic) | implementiert, gegen Sandbox testbar |
 | **DPD** | DE WebConnect (SOAP: LoginService V2.0 + ShipmentService V4.5, via `zeep`) | implementiert, gegen Stage testbar – SOAP-Header/Response noch nicht live verifiziert |
-| **Deutsche Post** | Internetmarke OneClickForApp (1C4A) V3 (SOAP) | **BETA**, mangels Zugangsdaten noch nicht getestet |
+| **Deutsche Post** | Internetmarke OneClickForApp (1C4A) V3 (SOAP) | **BETA** – Vorschau-Modus kostenlos testbar, Produktiv-Modus belastet die Portokasse |
 
 Geschrieben für **Frappe / ERPNext v15–v16**. Python-Abhängigkeit: `zeep` (SOAP, für DPD).
 
@@ -124,10 +124,21 @@ Produkte: `CL` (Classic), `E12/E18/E830` (Express), `IE2` (Int. Express),
 ## Deutsche Post / Internetmarke (1C4A V3) — BETA
 
 Braucht einen **Partnervertrag** (`PARTNER_ID`, `SCHLUESSEL`, `KEY_PHASE`) **und**
-ein **Portokasse-Konto** (E-Mail + Passwort). Es gibt keine Sandbox – Tests laufen
-gegen Produktion mit Kleinstbeträgen. Signatur: `SHA-512` über
+ein **Portokasse-Konto** (E-Mail + Passwort). Signatur: `SHA-512` über
 `PARTNER_ID::TIMESTAMP::KEY_PHASE::SCHLUESSEL` (Whitespace entfernt).
-Der Frankierbetrag (Cent) muss pro Sendung oder als Default gesetzt sein.
+
+**Es gibt keinen Testaccount.** Deshalb hat das Feld `Modus` zwei Stufen:
+
+| Modus | Aufruf | Kosten |
+| --- | --- | --- |
+| **Vorschau** (Default) | `retrievePreviewVoucherPDF` | **0 € – kein Portokasse-Abzug.** PDF ist ein als Muster gekennzeichnetes, **nicht versandfähiges** Voucher. Testet Signatur, Produktcode, Layout, Seitenformat, PDF-Handling. |
+| **Produktiv** | `checkoutShoppingCartPDF` | echte Marke, Portokasse wird belastet (Standardbrief ~0,95 €). Nicht genutzte Marken sind über **1C4Refund** erstattbar (separater Dienst, hier nicht implementiert). |
+
+„Verbindung testen" ist kostenlos: `retrievePageFormats` (prüft Partner-Signatur)
++ `authenticateUser` (prüft Portokasse-Login, zeigt Guthaben).
+
+Der Frankierbetrag (Cent) ist nur im Produktiv-Modus nötig – pro Sendung
+(`Frankierbetrag (Cent)`) oder als Default in den Settings.
 
 ---
 

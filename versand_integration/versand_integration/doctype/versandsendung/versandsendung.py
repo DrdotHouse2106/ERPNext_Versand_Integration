@@ -150,6 +150,11 @@ class Versandsendung(Document):
 		settings = self._carrier_settings()
 		if cint(getattr(settings, "validate_only", 0)):
 			return False
+		# Internetmarke-Vorschau ist keine echte Sendung -> nicht automatisch buchen.
+		if self.carrier == "Deutsche Post" and (
+			getattr(settings, "mode", "") or ""
+		).startswith("Vorschau"):
+			return False
 		return bool(cint(getattr(settings, "auto_submit", 1)))
 
 	def _apply_label_result(self, result: LabelResult):

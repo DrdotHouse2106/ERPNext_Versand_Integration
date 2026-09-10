@@ -16,7 +16,13 @@ def get_dp_settings():
 
 
 class DeutschePostCarrier(BaseCarrier):
-	"""Internetmarke (1C4A V3). BETA – noch nicht gegen echte Zugangsdaten getestet."""
+	"""Internetmarke (1C4A V3).
+
+	Zwei Modi (Feld ``mode`` in den Deutsche Post Settings):
+	* Vorschau  – ``retrievePreviewVoucherPDF``: kostenlos, kein Portokasse-Abzug,
+	  PDF ist Muster (nicht versandfähig). Für Tests.
+	* Produktiv – ``checkoutShoppingCartPDF``: belastet die Portokasse.
+	"""
 
 	name = "Deutsche Post"
 
@@ -24,14 +30,55 @@ class DeutschePostCarrier(BaseCarrier):
 		settings = get_dp_settings()
 		client = DPClient(settings)
 
+		product_code = (
+			shipment.product_override or settings.default_product_code or C.DEFAULT_PRODUCT_CODE
+		).strip()
+		layout = settings.voucher_layout or C.DEFAULT_VOUCHER_LAYOUT
+		page_format_id = int(
+			shipment.dp_page_format_id or settings.default_page_format_id or C.DEFAULT_PAGE_FORMAT_ID
+		)
+
+		if (settings.mode or C.MODE_PREVIEW) == C.MODE_PREVIEW:
+			return self._preview(client, settings, shipment, product_code, layout, page_format_id)
+		return self._checkout(client, settings, shipment, page_format_id)
+
+	# ---------------------------------------------------------------- preview
+	def _preview(self, client, settings, shipment, product_code, layout, page_format_id) -> LabelResult:
+		result = client.retrieve_preview_voucher_pdf(
+			product_code=product_code,
+			voucher_layout=layout,
+			page_format_id=page_format_id,
+			image_id=settings.preview_image_id or C.PREVIEW_DEFAULT_IMAGE_ID,
+		)
+		pdf = client.download_pdf(result["link"])
+		frappe.msgprint(
+			_("Vorschaumarke erzeugt (kostenlos). Diese PDF ist nur ein Muster und nicht versandfähig."),
+			indicator="orange",
+			alert=True,
+		)
+		return LabelResult(
+			shipment_number=f"PREVIEW-{shipment.name}",
+			tracking_number=f"PREVIEW-{shipment.name}",
+			tracking_url=None,
+			label_b64=base64.b64encode(pdf).decode(),
+			label_mimetype="application/pdf",
+			raw_request={
+				"mode": "preview",
+				"productCode": product_code,
+				"voucherLayout": layout,
+				"pageFormatId": page_format_id,
+			},
+			raw_response={"link": result["link"]},
+		)
+
+	# --------------------------------------------------------------- checkout
+	def _checkout(self, client, settings, shipment, page_format_id) -> LabelResult:
 		auth = client.authenticate_user()
 		user_token = auth.get("user_token")
 		if not user_token:
 			frappe.throw(_("Deutsche Post: kein userToken erhalten."))
 
 		positions_xml, total_cent = build_positions_xml(settings, shipment)
-		page_format_id = int(shipment.dp_page_format_id or settings.default_page_format_id or C.DEFAULT_PAGE_FORMAT_ID)
-
 		result = client.checkout_shopping_cart_pdf(
 			user_token,
 			page_format_id=page_format_id,
@@ -58,7 +105,12 @@ class DeutschePostCarrier(BaseCarrier):
 			),
 			label_b64=base64.b64encode(pdf).decode(),
 			label_mimetype="application/pdf",
-			raw_request={"positions": positions_xml, "total_cent": total_cent, "pageFormatId": page_format_id},
+			raw_request={
+				"mode": "checkout",
+				"positions": positions_xml,
+				"total_cent": total_cent,
+				"pageFormatId": page_format_id,
+			},
 			raw_response={
 				"link": link,
 				"shop_order_id": result.get("shop_order_id"),
@@ -68,8 +120,6 @@ class DeutschePostCarrier(BaseCarrier):
 		)
 
 	def cancel_label(self, shipment) -> dict:
-		# Storno/Erstattung läuft über den separaten Dienst 1C4Refund
-		# (retoureVouchers) und ist hier nicht implementiert.
 		return {
 			"info": _(
 				"Deutsche Post: Erstattung nicht genutzter Marken läuft über 1C4Refund "
