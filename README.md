@@ -1,14 +1,20 @@
-# Versand Integration
+# ERPNext Versand Integration
 
 Frappe-/ERPNext-App zur Erzeugung von **Versandetiketten direkt über die Carrier-APIs** –
 ohne Drittanbieter-Middleware.
 
-* **DHL Parcel DE Shipping API v2** – vollständig implementiert (Etikett erstellen,
-  stornieren, Sandbox + Produktion, OAuth2 **oder** Basic Auth).
-* **DPD** und **Deutsche Post / Portokasse (Internetmarke)** – Architektur vorbereitet
-  (`versand_integration/carriers/…`), noch nicht implementiert.
+* **DHL Parcel DE Shipping API v2** – Etikett erstellen, stornieren, Sandbox +
+  Produktion, OAuth2 **oder** Basic Auth.
+* **DPD** (DE WebConnect / SOAP: LoginService + ShipmentService) – Etikett erstellen
+  & stornieren.
+* **Deutsche Post / Portokasse (Internetmarke REST)** – Briefmarken (PDF/PNG),
+  Portokasse-Guthaben, Warenkorb.
 
 Getestet für **Frappe / ERPNext v15–v16**.
+
+> **Repo** heißt `ERPNext_Versand_Integration`, die **Frappe-App** heißt
+> `versand_integration` (Python-Modulname). Frappe Cloud / `bench` lesen den
+> App-Namen aus `pyproject.toml` – der Repo-Name muss nicht übereinstimmen.
 
 ---
 
@@ -38,7 +44,7 @@ Siehe [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ```bash
 cd ~/frappe-bench
-bench get-app versand_integration https://github.com/<user>/versand_integration.git
+bench get-app versand_integration https://github.com/DrdotHouse2106/ERPNext_Versand_Integration.git
 bench --site <site> install-app versand_integration
 bench --site <site> migrate
 bench build --app versand_integration
@@ -64,7 +70,9 @@ bench build --app versand_integration
 
 ### Testzugangsdaten schnell laden (nur self-hosted)
 
-`.secrets/dhl_credentials.json` (nicht im Git) enthält ein Beispiel/Testprofil:
+Format siehe [dhl_credentials.example.json](dhl_credentials.example.json). Lege eine
+lokale, **nicht** versionierte `.secrets/dhl_credentials.json` an (alles unter
+`.secrets/` ist gitignored) und lade sie:
 
 ```bash
 ./scripts/load_test_credentials.sh <site-name>
@@ -93,8 +101,8 @@ Produkte: `V01PAK` (DHL Paket), `V53WPAK` (Paket International), `V54EPAK`
 (Europaket), `V62KP` (DHL Kleinpaket), `V62WP` (Warenpost, Altname),
 `V66WPI` (Warenpost International).
 
-> API-Spezifikation und offizielle Postman-Onboarding-Collection liegen unter
-> `Info DHL Paket/` (gitignored).
+> Die DHL-OpenAPI-Spezifikation und die offizielle Postman-Onboarding-Collection
+> werden lokal unter `Info DHL Paket/` gehalten (gitignored, nicht im Repo).
 
 ---
 

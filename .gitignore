@@ -23,12 +23,12 @@ node_modules/
 *.log
 
 # Lokale Zugangsdaten – NIEMALS committen
-.secrets/*
-!.secrets/*.example.json
+.secrets/
 
-# Hersteller-Doku / große Binaries (nicht ins Deploy-Repo)
-# "Info DHL Paket/" (OpenAPI-Spec) bleibt bewusst getrackt.
+# Hersteller-Doku / große Binaries (nicht ins Repo)
 Infos Porto/
 Info DPD/
+Info DHL Paket/
+Info*/
 docs/vendor/
 *.zip
