@@ -16,6 +16,16 @@ doctype_js = {
 }
 
 # ---------------------------------------------------------------------------
+# Doc-Events: Briefkopf/Logo aus dem Versandabsender (Marke) übernehmen
+# ---------------------------------------------------------------------------
+_set_letter_head = "versand_integration.setup.letter_head.set_letter_head_from_absender"
+doc_events = {
+	"Sales Order": {"validate": _set_letter_head},
+	"Delivery Note": {"validate": _set_letter_head},
+	"Sales Invoice": {"validate": _set_letter_head},
+}
+
+# ---------------------------------------------------------------------------
 # Installation / Migration
 # ---------------------------------------------------------------------------
 after_install = "versand_integration.setup.install.after_install"
@@ -35,6 +45,10 @@ fixtures = [
 			"Delivery Note-vi_column_break_versand",
 			"Delivery Note-vi_sendungsnummer",
 			"Delivery Note-vi_tracking_url",
+			"Delivery Note-vi_versandabsender",
+			"Sales Order-vi_versandabsender",
+			"Sales Invoice-vi_versandabsender",
+			"Customer-vi_versandabsender",
 		]]],
 	},
 ]

@@ -4,6 +4,7 @@ except ImportError:  # Frappe < 15
 	from frappe.tests.utils import FrappeTestCase as _TestCase
 
 from versand_integration.carriers.deutsche_post.signature import partner_signature, request_timestamp
+from versand_integration.carriers.dhl import constants as dhl_c
 from versand_integration.carriers.dhl.mapper import split_street, to_alpha3
 from versand_integration.carriers.dpd.mapper import _weight_10g
 
@@ -17,6 +18,11 @@ class TestVersandsendung(_TestCase):
 	def test_to_alpha3(self):
 		self.assertEqual(to_alpha3("DE"), "DEU")
 		self.assertEqual(to_alpha3("DEU"), "DEU")
+
+	def test_resolve_product(self):
+		self.assertEqual(dhl_c.resolve_product("DHL Paket (national)"), "V01PAK")
+		self.assertEqual(dhl_c.resolve_product("V01PAK"), "V01PAK")
+		self.assertEqual(dhl_c.product_label("V53WPAK"), "DHL Paket International")
 
 	def test_dpd_weight_10g(self):
 		self.assertEqual(_weight_10g(3), 300)

@@ -41,7 +41,48 @@ CUSTOM_FIELDS = {
 			"read_only": 1,
 			"no_copy": 1,
 		},
-	]
+		{
+			"fieldname": "vi_versandabsender",
+			"label": "Versandabsender / Marke",
+			"fieldtype": "Link",
+			"options": "Versandabsender",
+			"insert_after": "vi_tracking_url",
+			"fetch_from": "customer.vi_versandabsender",
+			"fetch_if_empty": 1,
+		},
+	],
+	"Sales Order": [
+		{
+			"fieldname": "vi_versandabsender",
+			"label": "Versandabsender / Marke",
+			"fieldtype": "Link",
+			"options": "Versandabsender",
+			"insert_after": "customer_name",
+			"fetch_from": "customer.vi_versandabsender",
+			"fetch_if_empty": 1,
+		}
+	],
+	"Sales Invoice": [
+		{
+			"fieldname": "vi_versandabsender",
+			"label": "Versandabsender / Marke",
+			"fieldtype": "Link",
+			"options": "Versandabsender",
+			"insert_after": "customer_name",
+			"fetch_from": "customer.vi_versandabsender",
+			"fetch_if_empty": 1,
+		}
+	],
+	"Customer": [
+		{
+			"fieldname": "vi_versandabsender",
+			"label": "Versandabsender / Marke",
+			"fieldtype": "Link",
+			"options": "Versandabsender",
+			"insert_after": "default_price_list",
+			"description": "Vorbelegung für Aufträge, Lieferscheine und Versandetiketten dieses Kunden.",
+		}
+	],
 }
 
 

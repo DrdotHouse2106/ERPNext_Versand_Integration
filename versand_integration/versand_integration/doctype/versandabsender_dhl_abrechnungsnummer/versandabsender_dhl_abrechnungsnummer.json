@@ -1,0 +1,23 @@
+{
+ "actions": [],
+ "creation": "2026-09-10 12:00:00",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": ["product", "billing_number"],
+ "fields": [
+  {"fieldname": "product", "fieldtype": "Select", "label": "DHL-Produkt", "options": "DHL Paket (national)\nDHL Paket International\nDHL Europaket\nDHL Kleinpaket (national)\nWarenpost (Altvertrag)\nWarenpost International", "in_list_view": 1, "reqd": 1, "columns": 6},
+  {"fieldname": "billing_number", "fieldtype": "Data", "label": "Abrechnungsnummer (14-stellig)", "in_list_view": 1, "reqd": 1, "columns": 4}
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-09-10 12:00:00",
+ "modified_by": "Administrator",
+ "module": "Versand Integration",
+ "name": "Versandabsender DHL Abrechnungsnummer",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

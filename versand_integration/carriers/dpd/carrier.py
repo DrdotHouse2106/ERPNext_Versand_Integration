@@ -5,6 +5,7 @@ import base64
 import frappe
 from frappe import _
 
+from versand_integration.absender import resolve as resolve_absender
 from versand_integration.carriers.base import BaseCarrier, LabelPackage, LabelResult
 from versand_integration.carriers.dpd import constants as C
 from versand_integration.carriers.dpd.client import DPDClient
@@ -29,10 +30,11 @@ class DPDCarrier(BaseCarrier):
 
 	def create_label(self, shipment) -> LabelResult:
 		settings = get_dpd_settings()
+		absender = resolve_absender(shipment)
 		client = DPDClient(settings)
 		auth = client.login()
 
-		order = build_order(settings, shipment, depot=auth.get("depot"))
+		order = build_order(settings, shipment, absender, depot=auth.get("depot"))
 		result = client.store_orders(
 			order,
 			output_format=settings.output_format or C.DEFAULT_OUTPUT_FORMAT,

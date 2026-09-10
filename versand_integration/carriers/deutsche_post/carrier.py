@@ -5,6 +5,7 @@ import base64
 import frappe
 from frappe import _
 
+from versand_integration.absender import resolve as resolve_absender
 from versand_integration.carriers.base import BaseCarrier, LabelResult
 from versand_integration.carriers.deutsche_post import constants as C
 from versand_integration.carriers.deutsche_post.client import DPClient
@@ -31,7 +32,7 @@ class DeutschePostCarrier(BaseCarrier):
 		client = DPClient(settings)
 
 		product_code = (
-			shipment.product_override or settings.default_product_code or C.DEFAULT_PRODUCT_CODE
+			shipment.dp_product_code or settings.default_product_code or C.DEFAULT_PRODUCT_CODE
 		).strip()
 		layout = settings.voucher_layout or C.DEFAULT_VOUCHER_LAYOUT
 		page_format_id = int(
@@ -78,7 +79,7 @@ class DeutschePostCarrier(BaseCarrier):
 		if not user_token:
 			frappe.throw(_("Deutsche Post: kein userToken erhalten."))
 
-		positions_xml, total_cent = build_positions_xml(settings, shipment)
+		positions_xml, total_cent = build_positions_xml(settings, shipment, resolve_absender(shipment))
 		result = client.checkout_shopping_cart_pdf(
 			user_token,
 			page_format_id=page_format_id,

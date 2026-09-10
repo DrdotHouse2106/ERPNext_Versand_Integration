@@ -55,6 +55,8 @@ class Versandsendung(Document):
 		dn = frappe.get_doc("Delivery Note", self.delivery_note)
 		self.customer = dn.customer
 		self.customer_name = dn.customer_name
+		if not self.versandabsender:
+			self.versandabsender = dn.get("vi_versandabsender")
 		if not self.currency:
 			self.currency = dn.currency or "EUR"
 		if not self.reference:

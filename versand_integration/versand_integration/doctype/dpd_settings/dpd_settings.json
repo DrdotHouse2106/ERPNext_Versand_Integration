@@ -37,7 +37,7 @@
   {"fieldname": "column_break_zugang", "fieldtype": "Column Break"},
   {"fieldname": "sending_depot", "fieldtype": "Data", "label": "Sende-Depot (optional)", "description": "Leer lassen – kommt normalerweise aus dem Login (getAuth)."},
   {"fieldname": "section_defaults", "fieldtype": "Section Break", "label": "Voreinstellungen"},
-  {"fieldname": "default_product", "fieldtype": "Select", "label": "Standard-Produkt", "options": "CL\nCL2SHOP\nSHOP2SHOP\nE12\nE18\nE830\nIE2\nPSD\nMAIL", "default": "CL"},
+  {"fieldname": "default_product", "fieldtype": "Select", "label": "Standard-Produkt", "options": "DPD Classic (national/EU)\nDPD Classic an Pickup-Paketshop\nDPD Shop2Shop\nDPD Express 12:00\nDPD Express 18:00\nDPD Express 8:30\nDPD International Express\nDPD Parcelshop-Zustellung (Predict)\nDPD Priority (Mail)", "default": "DPD Classic (national/EU)"},
   {"fieldname": "paper_format", "fieldtype": "Select", "label": "Papierformat", "options": "A4\nA5\nA6\nA7", "default": "A6"},
   {"fieldname": "output_format", "fieldtype": "Select", "label": "Ausgabeformat", "options": "PDF\nZPL\nZPL300\nPKPASS", "default": "PDF"},
   {"fieldname": "column_break_defaults", "fieldtype": "Column Break"},

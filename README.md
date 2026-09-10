@@ -21,18 +21,40 @@ Geschrieben für **Frappe / ERPNext v15–v16**. Python-Abhängigkeit: `zeep` (S
 
 | Objekt | Zweck |
 | --- | --- |
-| **DHL Settings** / **DPD Settings** / **Deutsche Post Settings** (je Single) | Zugangsdaten, Absenderadresse, Voreinstellungen, „Verbindung testen" |
-| **Versandsendung** (submittable) | Eine Sendung zu einem Lieferschein: Carrier, Empfänger, Gewicht/Maße, Services, Mehrcolli, Etikett-PDF, Sendungsnummer, Tracking-Link, API-Protokoll |
+| **DHL Settings** / **DPD Settings** / **Deutsche Post Settings** (je Single) | Zugangsdaten, Fallback-Absender, Voreinstellungen, „Verbindung testen" |
+| **Versandabsender** | Marken-/Absenderprofil: Adresse, Retoure, Briefkopf, DHL-Abrechnungsnummern je Produkt |
+| **Versandsendung** (submittable) | Eine Sendung zu einem Lieferschein: Carrier, Absender, Empfänger, Gewicht/Maße, Services, Mehrcolli, Etikett-PDF, Sendungsnummer, Tracking-Link, API-Protokoll |
 | **Versandsendung Paket** (Child) | Einzelne Colli bei Mehrpaketsendungen (DHL/DPD) |
 | Button **„Versandetikett erstellen"** im *Lieferschein* | Carrier wählen → Versandsendung anlegen, API rufen, PDF anhängen & öffnen |
 | Custom Fields am *Lieferschein* | `Versandsendung`, `Sendungsnummer`, `Sendungsverfolgung` |
 
-Ablauf: **Lieferschein buchen → „Versandetikett erstellen" → Carrier wählen** →
+Ablauf: **Lieferschein buchen → „Versandetikett erstellen" → Carrier + Absender wählen** →
 PDF öffnet sich, Sendungsnummer & Tracking-Link stehen am Lieferschein und an der
 Versandsendung. Storno der Versandsendung:
 * DHL – Sendung wird per `DELETE /orders` gelöscht.
 * DPD – nicht nötig (nicht manifestierte Sendungen einfach nicht abschließen).
 * Deutsche Post – Erstattung läuft über den separaten Dienst 1C4Refund (nicht in dieser App).
+
+---
+
+## Mehrere Marken / Absender (`Versandabsender`)
+
+Eine ERPNext-Company, mehrere Marken (z. B. *FranceTec*, *Schmelzkammer*,
+*kfz-isolierung.de*)? Pro Marke ein **Versandabsender**-Datensatz:
+
+* Absender- und Retourenadresse, E-Mail/Telefon
+* **Briefkopf** (Letter Head) → landet automatisch auf Auftrag/Lieferschein/Rechnung,
+  solange dort noch keiner gesetzt ist (unterschiedliche Logos je Marke)
+* **DHL: Abrechnungsnummern je Produkt** (jede Marke hat i. d. R. eigene) + DHL-Profil
+* DPD: optionales Sende-Depot
+
+**Zuordnung** je Lieferschein (Feld *Versandabsender / Marke*):
+Kunde → Auftrag → Lieferschein (wird durchgereicht), sonst der als *Standard*
+markierte Versandabsender, sonst die Absenderfelder im Carrier-Settings-Doctype.
+Beim „Versandetikett erstellen" lässt sich der Absender im Dialog noch überschreiben.
+
+Logo-Wechsel auf Dokumenten = **Letter Head** je Marke anlegen und im Versandabsender
+verknüpfen. Kein Company-Wechsel nötig.
 
 ---
 
@@ -65,9 +87,11 @@ bench build --app versand_integration
    * **Basic** – *API Key* (als Header) + GKP-Login.
      Sandbox-Login, wenn leer: `sandy_sandbox` / `pass`.
 4. `API Key` / `API Secret` aus dem [DHL Developer Portal](https://developer.dhl.com/).
-5. **Absender / Retourenadresse** ausfüllen (Pflicht: Name 1, PLZ, Ort).
-6. In Produktion: `Abrechnungsnummer` (14-stellig) eintragen. In der Sandbox
-   werden je Produkt die offiziellen Test-Abrechnungsnummern verwendet.
+5. **Absender / Retourenadresse** als Fallback ausfüllen – oder besser gleich
+   **`Versandabsender`**-Datensätze anlegen (siehe oben) und die Abrechnungsnummern
+   dort je Produkt pflegen.
+6. In der Sandbox werden je Produkt die offiziellen Test-Abrechnungsnummern
+   verwendet, wenn keine hinterlegt ist.
 7. **„Verbindung testen"** klicken → macht einen `validate=true`-Aufruf.
 
 ### Testzugangsdaten schnell laden (nur self-hosted)
@@ -99,9 +123,11 @@ bench --site <site> execute versand_integration.utils.credentials.load_from_file
 Leere Felder für GKP-Benutzer/Passwort und Abrechnungsnummer werden in der
 Sandbox automatisch mit den obigen Testwerten belegt (je nach `auth_method`).
 
-Produkte: `V01PAK` (DHL Paket), `V53WPAK` (Paket International), `V54EPAK`
-(Europaket), `V62KP` (DHL Kleinpaket), `V62WP` (Warenpost, Altname),
-`V66WPI` (Warenpost International).
+In den Auswahlfeldern stehen lesbare Namen; die App übersetzt sie in die
+DHL-Codes: DHL Paket (national) = `V01PAK`, DHL Paket International = `V53WPAK`,
+DHL Europaket = `V54EPAK`, DHL Kleinpaket = `V62KP`, Warenpost = `V62WP`,
+Warenpost International = `V66WPI`. Jedes Produkt braucht eine dazu passende
+Abrechnungsnummer (Stelle 11–12 = Produktnummer).
 
 > Herstellerdoku (DHL-OpenAPI-Spec, DPD-WSDL/PDFs, Internetmarke-WSDL) wird lokal
 > unter `Info DHL Paket/`, `Info DPD/`, `Infos Porto/` gehalten – gitignored.
@@ -153,10 +179,12 @@ versand_integration/
 │   ├── dhl/             # Parcel DE Shipping v2 (REST): constants, client, mapper, carrier
 │   ├── dpd/             # DE WebConnect (SOAP via zeep): constants, client, mapper, carrier
 │   └── deutsche_post/   # Internetmarke 1C4A V3 (SOAP): constants, signature, client, mapper, carrier
-├── api.py               # whitelisted: create_shipment_from_delivery_note(carrier=…)
-├── setup/install.py     # Custom Fields, Settings-Singletons
+├── absender.py          # Versandabsender/Marke -> ResolvedAbsender (Adresse, DHL-Abr.-Nr.)
+├── api.py               # whitelisted: create_shipment_from_delivery_note(carrier, versandabsender)
+├── setup/install.py     # Custom Fields (inkl. vi_versandabsender), Settings-Singletons
+├── setup/letter_head.py # Briefkopf aus Versandabsender auf SO/DN/SI
 ├── utils/credentials.py # .secrets/*.json -> Settings (nur self-hosted, zum Testen)
-└── versand_integration/doctype/…   # DHL/DPD/Deutsche Post Settings, Versandsendung(+Paket)
+└── versand_integration/doctype/…   # Settings (DHL/DPD/DP), Versandabsender(+DHL-Abr.-Nr.), Versandsendung(+Paket)
 ```
 
 Ein neuer Carrier = neuer Ordner `carriers/<name>/` mit einer `BaseCarrier`-Klasse,

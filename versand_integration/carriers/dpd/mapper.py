@@ -49,25 +49,24 @@ def _country(value) -> str:
 	return code.upper()
 
 
-def _sender(settings):
-	if not (settings.sender_name1 and settings.sender_zip and settings.sender_city):
-		raise CarrierConfigError(_("DPD Settings: Absenderadresse unvollständig (Name, PLZ, Ort)."))
+def _sender(absender):
+	absender.require_address("DPD")
 	return _address(
-		settings.sender_name1,
-		settings.sender_name2,
-		settings.sender_street,
-		settings.sender_house_number,
-		settings.sender_country or "DE",
-		settings.sender_zip,
-		settings.sender_city,
-		email=settings.sender_email,
-		phone=settings.sender_phone,
+		absender.name1,
+		absender.name2,
+		absender.street,
+		absender.house_number,
+		absender.country or "DE",
+		absender.postal_code,
+		absender.city,
+		email=absender.email,
+		phone=absender.phone,
 	)
 
 
-def build_order(settings, doc, depot: str) -> dict:
-	product = (doc.product_override or settings.default_product or C.DEFAULT_PRODUCT).strip()
-	sending_depot = (settings.sending_depot or depot or "").strip()
+def build_order(settings, doc, absender, depot: str) -> dict:
+	product = C.resolve_product(doc.dpd_product or settings.default_product)
+	sending_depot = (absender.dpd_sending_depot or settings.sending_depot or depot or "").strip()
 	if not sending_depot:
 		raise CarrierConfigError(_("DPD: sendingDepot fehlt (kommt normalerweise aus dem Login)."))
 
@@ -92,7 +91,7 @@ def build_order(settings, doc, depot: str) -> dict:
 	general = {
 		"sendingDepot": sending_depot,
 		"product": product,
-		"sender": _sender(settings),
+		"sender": _sender(absender),
 		"recipient": recipient,
 		"softwareVersion": C.SOFTWARE_VERSION,
 	}

@@ -48,9 +48,9 @@ def _party(name1, name2, street, house_no, zip_code, city, country, additional=N
 	return _name_block(name1, name2) + _addr_block(street, house_no, zip_code, city, country, additional)
 
 
-def build_positions_xml(settings, doc) -> tuple[str, int]:
+def build_positions_xml(settings, doc, absender) -> tuple[str, int]:
 	"""Gibt (positions_xml, total_cent) zurück."""
-	product_code = (doc.product_override or settings.default_product_code or C.DEFAULT_PRODUCT_CODE).strip()
+	product_code = (doc.dp_product_code or settings.default_product_code or C.DEFAULT_PRODUCT_CODE).strip()
 	layout = settings.voucher_layout or C.DEFAULT_VOUCHER_LAYOUT
 
 	amount = cint(doc.dp_franking_cent) or cint(settings.default_franking_cent)
@@ -59,14 +59,15 @@ def build_positions_xml(settings, doc) -> tuple[str, int]:
 			_("Deutsche Post: Frankierbetrag (Cent) fehlt – an der Sendung oder in den Settings hinterlegen.")
 		)
 
+	absender.require_address("Deutsche Post")
 	sender = _party(
-		settings.sender_name1,
-		settings.sender_name2,
-		settings.sender_street,
-		settings.sender_house_number,
-		settings.sender_zip,
-		settings.sender_city,
-		settings.sender_country or "Deutschland",
+		absender.name1,
+		absender.name2,
+		absender.street,
+		absender.house_number,
+		absender.postal_code,
+		absender.city,
+		_country_name(absender.country),
 	)
 	receiver = _party(
 		doc.receiver_name,
