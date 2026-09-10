@@ -74,6 +74,12 @@ class DPDCarrier(BaseCarrier):
 			raw_response=result.get("raw"),
 		)
 
+	def track(self, shipment):
+		from versand_integration.carriers.dpd.tracking import DPDTracking
+
+		number = shipment.tracking_number or shipment.shipment_number
+		return DPDTracking().track(number)
+
 	def cancel_label(self, shipment) -> dict:
 		# DPD DE WebConnect kennt keinen Storno vor dem Tagesabschluss:
 		# nicht abgeschlossene Sendungen werden einfach nicht übermittelt.

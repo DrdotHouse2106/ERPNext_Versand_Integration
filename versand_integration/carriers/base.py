@@ -28,6 +28,42 @@ class LabelResult:
 	raw_response: dict | None = None
 
 
+# --- Sendungsverfolgung -------------------------------------------------
+# Normalisierte Status-Werte (identisch mit dem Select-Feld an der Versandsendung).
+TRACK_ANNOUNCED = "Angekündigt"
+TRACK_PICKED_UP = "Abgeholt"
+TRACK_IN_TRANSIT = "In Transport"
+TRACK_OUT_FOR_DELIVERY = "In Zustellung"
+TRACK_DELIVERED = "Zugestellt"
+TRACK_PROBLEM = "Zustellproblem"
+TRACK_RETURN = "Retoure"
+TRACK_UNKNOWN = "Unbekannt"
+
+TRACK_FINAL = {TRACK_DELIVERED, TRACK_RETURN}
+
+
+@dataclass
+class TrackingEvent:
+	event_time: str | None = None  # ISO-8601 / "YYYY-MM-DD HH:MM:SS"
+	status: str = ""
+	location: str = ""
+	description: str = ""
+
+
+@dataclass
+class TrackingResult:
+	status: str = TRACK_UNKNOWN
+	status_text: str = ""
+	delivered_on: str | None = None
+	last_update: str | None = None
+	events: list[TrackingEvent] = field(default_factory=list)
+	raw: dict | None = None
+
+
+class TrackingNotSupported(Exception):
+	pass
+
+
 class BaseCarrier(abc.ABC):
 	"""Schnittstelle, die jeder Carrier (DHL, DPD, Deutsche Post …) implementiert."""
 
@@ -41,5 +77,5 @@ class BaseCarrier(abc.ABC):
 	def cancel_label(self, shipment) -> dict:
 		"""Storniert eine bereits erstellte Sendung beim Carrier."""
 
-	def track(self, shipment) -> dict:  # optional
-		raise NotImplementedError
+	def track(self, shipment) -> TrackingResult:
+		raise TrackingNotSupported(self.name)

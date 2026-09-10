@@ -1,0 +1,25 @@
+{
+ "actions": [],
+ "creation": "2026-09-10 12:00:00",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": ["event_time", "status", "location", "description"],
+ "fields": [
+  {"fieldname": "event_time", "fieldtype": "Datetime", "label": "Zeitpunkt", "in_list_view": 1, "columns": 2},
+  {"fieldname": "status", "fieldtype": "Data", "label": "Status", "in_list_view": 1, "columns": 2},
+  {"fieldname": "location", "fieldtype": "Data", "label": "Ort", "in_list_view": 1, "columns": 2},
+  {"fieldname": "description", "fieldtype": "Small Text", "label": "Beschreibung", "in_list_view": 1, "columns": 4}
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-09-10 12:00:00",
+ "modified_by": "Administrator",
+ "module": "Versand Integration",
+ "name": "Versandsendung Tracking Event",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "event_time",
+ "sort_order": "DESC",
+ "states": []
+}

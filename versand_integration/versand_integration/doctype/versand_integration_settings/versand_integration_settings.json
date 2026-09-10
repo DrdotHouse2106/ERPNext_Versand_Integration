@@ -1,0 +1,41 @@
+{
+ "actions": [],
+ "creation": "2026-09-10 12:00:00",
+ "description": "Übergreifende Einstellungen der Versand-Integration (Sendungsverfolgung).",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_tracking",
+  "tracking_enabled",
+  "tracking_interval_hourly",
+  "tracking_stop_after_days",
+  "column_break_tracking",
+  "tracking_notify_problems",
+  "tracking_notify_role",
+  "tracking_notify_email"
+ ],
+ "fields": [
+  {"fieldname": "section_tracking", "fieldtype": "Section Break", "label": "Sendungsverfolgung"},
+  {"fieldname": "tracking_enabled", "fieldtype": "Check", "label": "Automatische Sendungsverfolgung aktiv", "default": 1, "description": "Stündlicher Hintergrund-Job aktualisiert offene Sendungen."},
+  {"fieldname": "tracking_interval_hourly", "fieldtype": "Int", "label": "Mindestabstand zwischen Abfragen (Stunden)", "default": 1, "description": "Eine Sendung wird frühestens nach so vielen Stunden erneut abgefragt."},
+  {"fieldname": "tracking_stop_after_days", "fieldtype": "Int", "label": "Verfolgung beenden nach (Tagen)", "default": 21, "description": "Nach so vielen Tagen ohne Zustellung wird die Verfolgung dieser Sendung gestoppt."},
+  {"fieldname": "column_break_tracking", "fieldtype": "Column Break"},
+  {"fieldname": "tracking_notify_problems", "fieldtype": "Check", "label": "Bei Zustellproblem / Retoure benachrichtigen", "default": 1},
+  {"fieldname": "tracking_notify_role", "fieldtype": "Link", "label": "Benachrichtigen: Rolle", "options": "Role", "default": "Stock Manager", "description": "Alle Benutzer mit dieser Rolle erhalten eine Desk-Benachrichtigung."},
+  {"fieldname": "tracking_notify_email", "fieldtype": "Check", "label": "Zusätzlich per E-Mail", "default": 0}
+ ],
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-09-10 12:00:00",
+ "modified_by": "Administrator",
+ "module": "Versand Integration",
+ "name": "Versand Integration Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {"create": 1, "delete": 1, "email": 1, "print": 1, "read": 1, "role": "System Manager", "share": 1, "write": 1}
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

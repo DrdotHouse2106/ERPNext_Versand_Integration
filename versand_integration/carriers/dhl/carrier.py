@@ -56,6 +56,12 @@ class DHLCarrier(BaseCarrier):
 			raw_response=response,
 		)
 
+	def track(self, shipment):
+		from versand_integration.carriers.dhl.tracking import DHLTracking
+
+		number = shipment.tracking_number or shipment.shipment_number
+		return DHLTracking(get_dhl_settings()).track(number)
+
 	def cancel_label(self, shipment) -> dict:
 		settings = get_dhl_settings()
 		client = DHLClient(settings)

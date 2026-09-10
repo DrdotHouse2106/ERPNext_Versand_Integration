@@ -6,9 +6,10 @@ import json
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import cint, flt
+from frappe.utils import cint, flt, get_url_to_form, now_datetime
 
-from versand_integration.carriers.base import LabelResult
+from versand_integration.carriers import base as cbase
+from versand_integration.carriers.base import LabelResult, TrackingNotSupported, TrackingResult
 from versand_integration.carriers.exceptions import CarrierError
 from versand_integration.carriers.registry import get_carrier
 
@@ -203,6 +204,68 @@ class Versandsendung(Document):
 		result = carrier.cancel_label(self)
 		self.api_response = json.dumps(result, indent=2, ensure_ascii=False, default=str)
 
+	# ---------------------------------------------------------- tracking
+	@frappe.whitelist()
+	def refresh_tracking(self, commit: bool = False):
+		if not (self.shipment_number or self.tracking_number):
+			frappe.throw(_("Für diese Sendung gibt es noch keine Sendungsnummer."))
+		try:
+			result: TrackingResult = get_carrier(self.carrier).track(self)
+		except TrackingNotSupported:
+			frappe.msgprint(_("Für {0} gibt es keine Sendungsverfolgung.").format(self.carrier))
+			return {"status": self.tracking_status}
+		except CarrierError as exc:
+			frappe.throw(_("Tracking fehlgeschlagen: {0}").format(exc))
+
+		changed = self._apply_tracking_result(result)
+		self.flags.ignore_validate = True
+		self.save(ignore_permissions=True)
+		self._mirror_tracking_to_delivery_note()
+		if changed and result.status in (cbase.TRACK_PROBLEM, cbase.TRACK_RETURN):
+			_notify_problem(self)
+		if commit:
+			frappe.db.commit()
+		return {"status": self.tracking_status, "text": self.tracking_status_text}
+
+	def _apply_tracking_result(self, result: TrackingResult) -> bool:
+		previous = self.tracking_status
+		self.tracking_status = result.status or cbase.TRACK_UNKNOWN
+		self.tracking_status_text = (result.status_text or "")[:280]
+		self.tracking_last_update = result.last_update or now_datetime()
+		if result.delivered_on:
+			self.tracking_delivered_on = result.delivered_on
+
+		self.set("tracking_events", [])
+		for ev in result.events:
+			self.append(
+				"tracking_events",
+				{
+					"event_time": ev.event_time,
+					"status": ev.status,
+					"location": ev.location,
+					"description": ev.description,
+				},
+			)
+
+		if self.tracking_status in cbase.TRACK_FINAL:
+			self.tracking_polling_active = 0
+		return self.tracking_status != previous
+
+	def _mirror_tracking_to_delivery_note(self):
+		if not self.delivery_note:
+			return
+		if frappe.db.get_value("Delivery Note", self.delivery_note, "vi_versandsendung") != self.name:
+			return
+		frappe.db.set_value(
+			"Delivery Note",
+			self.delivery_note,
+			{
+				"vi_tracking_status": self.tracking_status,
+				"vi_tracking_delivered_on": self.tracking_delivered_on,
+			},
+			update_modified=False,
+		)
+
 	# ------------------------------------------------- delivery note backref
 	def _write_back_to_delivery_note(self):
 		if not self.delivery_note:
@@ -236,3 +299,58 @@ def _format_error(exc: CarrierError) -> str:
 	if details:
 		msg += "\n\n" + "\n".join(f"• {d}" for d in details)
 	return msg
+
+
+def _notify_problem(doc):
+	"""Desk-Benachrichtigung (und optional E-Mail) bei Zustellproblem/Retoure."""
+	try:
+		settings = frappe.get_cached_doc("Versand Integration Settings")
+	except frappe.DoesNotExistError:
+		return
+	if not cint(settings.tracking_notify_problems):
+		return
+
+	if doc.tracking_problem_notified == doc.tracking_status:
+		return
+
+	role = settings.tracking_notify_role or "Stock Manager"
+	users = [
+		u
+		for u in frappe.get_all(
+			"Has Role", filters={"role": role, "parenttype": "User"}, pluck="parent"
+		)
+		if frappe.db.get_value("User", u, "enabled")
+	]
+	if not users:
+		return
+
+	subject = _("Versand: {0} – {1}").format(doc.tracking_status, doc.shipment_number or doc.name)
+	message = _("Sendung {0} ({1}, {2}): {3}").format(
+		doc.name, doc.carrier, doc.customer_name or "", doc.tracking_status_text or doc.tracking_status
+	)
+	for user in users:
+		frappe.get_doc(
+			{
+				"doctype": "Notification Log",
+				"subject": subject,
+				"email_content": message,
+				"for_user": user,
+				"type": "Alert",
+				"document_type": "Versandsendung",
+				"document_name": doc.name,
+			}
+		).insert(ignore_permissions=True)
+
+	if cint(settings.tracking_notify_email):
+		recipients = [frappe.db.get_value("User", u, "email") or u for u in users]
+		frappe.sendmail(
+			recipients=recipients,
+			subject=subject,
+			message=f"{message}<br><br>{get_url_to_form('Versandsendung', doc.name)}",
+			reference_doctype="Versandsendung",
+			reference_name=doc.name,
+		)
+
+	frappe.db.set_value(
+		"Versandsendung", doc.name, "tracking_problem_notified", doc.tracking_status, update_modified=False
+	)
