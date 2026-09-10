@@ -45,13 +45,17 @@ CUSTOM_FIELDS = {
 }
 
 
+SINGLETONS = ("DHL Settings", "DPD Settings", "Deutsche Post Settings")
+
+
 def after_install():
 	create_custom_fields(CUSTOM_FIELDS, ignore_validate=True)
-	_ensure_dhl_settings_singleton()
+	_ensure_singletons()
 
 
 def after_migrate():
 	create_custom_fields(CUSTOM_FIELDS, ignore_validate=True)
+	_ensure_singletons()
 
 
 def before_uninstall():
@@ -63,8 +67,9 @@ def before_uninstall():
 				frappe.delete_doc("Custom Field", name, ignore_permissions=True, force=True)
 
 
-def _ensure_dhl_settings_singleton():
-	if not frappe.db.exists("DHL Settings", "DHL Settings"):
-		doc = frappe.get_doc({"doctype": "DHL Settings"})
-		doc.flags.ignore_permissions = True
-		doc.insert(ignore_if_duplicate=True)
+def _ensure_singletons():
+	for doctype in SINGLETONS:
+		if not frappe.db.exists(doctype, doctype):
+			doc = frappe.get_doc({"doctype": doctype})
+			doc.flags.ignore_permissions = True
+			doc.insert(ignore_if_duplicate=True)
