@@ -36,8 +36,7 @@
   "print_format",
   "doc_format",
   "column_break_defaults",
-  "default_premium_international",
-  "default_gogreen_plus",
+  "default_premium_eu",
   "validate_only",
   "auto_submit"
  ],
@@ -73,8 +72,7 @@
   {"fieldname": "print_format", "fieldtype": "Select", "label": "Druckformat", "options": "910-300-700\n910-300-700-oz\n910-300-600\n910-300-610\n910-300-710\n100x70mm\nA4", "default": "910-300-700"},
   {"fieldname": "doc_format", "fieldtype": "Select", "label": "Dokumentenformat", "options": "PDF\nZPL2", "default": "PDF"},
   {"fieldname": "column_break_defaults", "fieldtype": "Column Break"},
-  {"fieldname": "default_premium_international", "fieldtype": "Check", "label": "Premium bei Auslandssendungen", "description": "Setzt bei DHL Paket International / Europaket / Warenpost International automatisch die Zusatzleistung Premium (bevorzugte Behandlung/Zustellung)."},
-  {"fieldname": "default_gogreen_plus", "fieldtype": "Check", "label": "GoGreen Plus immer aktiv", "description": "Klimafreundlicher Versand (GoGreen Plus) für alle DHL-Sendungen. Muss im DHL-Vertrag freigeschaltet sein."},
+  {"fieldname": "default_premium_eu", "fieldtype": "Check", "label": "Premium bei Sendungen in EU-Länder", "default": 1, "description": "Setzt bei internationalen Produkten automatisch Premium, wenn das Empfängerland in der EU liegt. Für andere Länder wird kein Premium gesetzt (dort ggf. Economy günstiger)."},
   {"fieldname": "validate_only", "fieldtype": "Check", "label": "Nur validieren (kein echtes Etikett erzeugen)"},
   {"fieldname": "auto_submit", "fieldtype": "Check", "label": "Versandsendung nach Etikett automatisch buchen", "default": 1}
  ],

@@ -86,6 +86,13 @@ TRACKING_URL_TEMPLATE = (
 	"https://www.dhl.de/de/privatkunden/pakete-empfangen/verfolgen.html?piececode={number}"
 )
 
+# EU-Mitgliedstaaten (ISO alpha-3) – für die automatische Premium-Regel.
+EU_COUNTRIES = {
+	"AUT", "BEL", "BGR", "HRV", "CYP", "CZE", "DNK", "EST", "FIN", "FRA",
+	"DEU", "GRC", "HUN", "IRL", "ITA", "LVA", "LTU", "LUX", "MLT", "NLD",
+	"POL", "PRT", "ROU", "SVK", "SVN", "ESP", "SWE",
+}
+
 # --- Länder: ISO 3166-1 alpha-2 -> alpha-3 -------------------------------
 # ERPNext speichert im Country-Doctype den alpha-2 Code (`code`). DHL erwartet
 # alpha-3. Häufig genutzte Ziele; weitere bei Bedarf ergänzen.
