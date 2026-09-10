@@ -51,9 +51,11 @@ bench build --app versand_integration
 1. **Desk → „DHL Settings"** öffnen.
 2. `Umgebung` = *Sandbox* zum Testen.
 3. `Authentifizierung`:
-   * **Basic** – benötigt nur *API Key* + Geschäftskundenportal-Login.
-     In der Sandbox wird automatisch `sandy_sandbox` / `pass` verwendet, wenn leer.
-   * **OAuth2** – benötigt zusätzlich *API Secret*. Token wird gecacht.
+   * **OAuth2** (empfohlen, wie die offizielle DHL-Onboarding-Collection) –
+     *API Key* + *API Secret* + GKP-Login. Token wird gecacht.
+     Sandbox-Login, wenn leer: `user-valid` / `SandboxPasswort2023!`.
+   * **Basic** – *API Key* (als Header) + GKP-Login.
+     Sandbox-Login, wenn leer: `sandy_sandbox` / `pass`.
 4. `API Key` / `API Secret` aus dem [DHL Developer Portal](https://developer.dhl.com/).
 5. **Absender / Retourenadresse** ausfüllen (Pflicht: Name 1, PLZ, Ort).
 6. In Produktion: `Abrechnungsnummer` (14-stellig) eintragen. In der Sandbox
@@ -77,13 +79,22 @@ bench --site <site> execute versand_integration.utils.credentials.load_from_file
 | | Wert |
 | --- | --- |
 | Basis-URL | `https://api-sandbox.dhl.com/parcel/de/shipping/v2` |
-| Basic-Auth | `sandy_sandbox` / `pass` |
-| Abrechnungsnr. `V01PAK` | `33333333330101` |
+| Token-URL (OAuth2) | `https://api-sandbox.dhl.com/parcel/de/account/auth/ropc/v1/token` |
+| OAuth2-Testlogin | `user-valid` / `SandboxPasswort2023!` (+ dein API Key/Secret als client_id/secret) |
+| Basic-Auth-Testlogin | `sandy_sandbox` / `pass` (+ API Key als `dhl-api-key`-Header) |
+| Abrechnungsnr. `V01PAK` | `33333333330102` (mit Services), `…0101` (ohne) |
 | Profil | `STANDARD_GRUPPENPROFIL` |
 | Druckformat | `910-300-700` (A4) |
 
+Leere Felder für GKP-Benutzer/Passwort und Abrechnungsnummer werden in der
+Sandbox automatisch mit den obigen Testwerten belegt (je nach `auth_method`).
+
 Produkte: `V01PAK` (DHL Paket), `V53WPAK` (Paket International), `V54EPAK`
-(Europaket), `V62WP` (Warenpost), `V66WPI` (Warenpost International).
+(Europaket), `V62KP` (DHL Kleinpaket), `V62WP` (Warenpost, Altname),
+`V66WPI` (Warenpost International).
+
+> API-Spezifikation und offizielle Postman-Onboarding-Collection liegen unter
+> `Info DHL Paket/` (gitignored).
 
 ---
 

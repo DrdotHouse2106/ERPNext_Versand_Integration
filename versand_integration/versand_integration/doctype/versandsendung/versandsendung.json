@@ -64,7 +64,7 @@
   {"fieldname": "customer", "fieldtype": "Link", "label": "Kunde", "options": "Customer", "read_only": 1},
   {"fieldname": "customer_name", "fieldtype": "Data", "label": "Kundenname", "read_only": 1, "hidden": 1},
   {"fieldname": "carrier", "fieldtype": "Select", "label": "Carrier", "options": "DHL\nDPD\nDeutsche Post", "default": "DHL", "reqd": 1, "in_list_view": 1, "in_standard_filter": 1},
-  {"fieldname": "product", "fieldtype": "Select", "label": "Produkt", "options": "\nV01PAK\nV53WPAK\nV54EPAK\nV62WP\nV66WPI", "description": "Leer = Standard-Produkt aus den DHL Settings."},
+  {"fieldname": "product", "fieldtype": "Select", "label": "Produkt", "options": "\nV01PAK\nV53WPAK\nV54EPAK\nV62KP\nV62WP\nV66WPI", "description": "Leer = Standard-Produkt aus den DHL Settings."},
   {"fieldname": "column_break_head", "fieldtype": "Column Break"},
   {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Entwurf\nEtikett erstellt\nStorniert\nFehler", "default": "Entwurf", "read_only": 1, "in_list_view": 1, "in_standard_filter": 1},
   {"fieldname": "shipment_number", "fieldtype": "Data", "label": "Sendungsnummer", "read_only": 1, "no_copy": 1, "in_list_view": 1},

@@ -6,7 +6,7 @@ import re
 
 import frappe
 from frappe import _
-from frappe.utils import flt
+from frappe.utils import flt, today
 
 from versand_integration.carriers.dhl import constants as C
 from versand_integration.carriers.exceptions import CarrierConfigError
@@ -122,9 +122,15 @@ def _services(doc):
 	if doc.service_visual_check_of_age:
 		services["visualCheckOfAge"] = doc.service_visual_check_of_age
 	if flt(doc.cod_amount) > 0:
-		services["cashOnDelivery"] = {
-			"amount": {"currency": doc.currency or "EUR", "value": flt(doc.cod_amount)}
+		# transferNote1 ist Pflicht. Bankdaten kommen aus dem GKP-Profil
+		# (Standard-accountReference), sofern keine explizit hinterlegt ist.
+		cod = {
+			"amount": {"currency": "EUR", "value": flt(doc.cod_amount)},
+			"transferNote1": (doc.reference or doc.name or "")[:35],
 		}
+		if getattr(doc, "cod_account_reference", None):
+			cod["accountReference"] = doc.cod_account_reference
+		services["cashOnDelivery"] = cod
 	return services
 
 
@@ -151,34 +157,38 @@ def build_order_payload(settings, doc) -> dict:
 	shipper = _shipper_block(settings)
 	consignee = _consignee_block(doc)
 	services = _services(doc)
-	ref = doc.reference or doc.delivery_note or doc.name
+	ship_date = today()
 
-	packages = list(doc.packages or [])
-	shipments = []
-	if packages:
-		for pkg in packages:
-			shipment = {
-				"product": product,
-				"billingNumber": billing_number,
-				"refNo": ref[:35],
-				"shipper": shipper,
-				"consignee": consignee,
-				"details": _details(pkg.weight_kg, pkg.length_cm, pkg.width_cm, pkg.height_cm),
-			}
-			if services:
-				shipment["services"] = services
-			shipments.append(shipment)
-	else:
+	# refNo: DHL verlangt 8–35 Zeichen; darunter lieber weglassen.
+	ref = (doc.reference or doc.delivery_note or doc.name or "").strip()[:35]
+	ref_no = ref if len(ref) >= 8 else None
+
+	def _base_shipment(details):
 		shipment = {
 			"product": product,
 			"billingNumber": billing_number,
-			"refNo": ref[:35],
+			"shipDate": ship_date,
 			"shipper": shipper,
 			"consignee": consignee,
-			"details": _details(doc.total_weight, doc.length_cm, doc.width_cm, doc.height_cm),
+			"details": details,
 		}
+		if ref_no:
+			shipment["refNo"] = ref_no
 		if services:
 			shipment["services"] = services
-		shipments.append(shipment)
+		return shipment
+
+	packages = list(doc.packages or [])
+	if packages:
+		shipments = [
+			_base_shipment(_details(p.weight_kg, p.length_cm, p.width_cm, p.height_cm))
+			for p in packages
+		]
+	else:
+		shipments = [
+			_base_shipment(
+				_details(doc.total_weight, doc.length_cm, doc.width_cm, doc.height_cm)
+			)
+		]
 
 	return {"profile": settings.profile or C.DEFAULT_PROFILE, "shipments": shipments}

@@ -63,7 +63,7 @@
   {"fieldname": "shipper_email", "fieldtype": "Data", "label": "E-Mail", "options": "Email"},
   {"fieldname": "shipper_phone", "fieldtype": "Data", "label": "Telefon"},
   {"fieldname": "section_defaults", "fieldtype": "Section Break", "label": "Voreinstellungen Etikett"},
-  {"fieldname": "default_product", "fieldtype": "Select", "label": "Standard-Produkt", "options": "V01PAK\nV53WPAK\nV54EPAK\nV62WP\nV66WPI", "default": "V01PAK"},
+  {"fieldname": "default_product", "fieldtype": "Select", "label": "Standard-Produkt", "options": "V01PAK\nV53WPAK\nV54EPAK\nV62KP\nV62WP\nV66WPI", "default": "V01PAK"},
   {"fieldname": "print_format", "fieldtype": "Select", "label": "Druckformat", "options": "910-300-700\n910-300-700-oz\n910-300-600\n910-300-610\n910-300-710\n100x70mm\nA4", "default": "910-300-700"},
   {"fieldname": "doc_format", "fieldtype": "Select", "label": "Dokumentenformat", "options": "PDF\nZPL2", "default": "PDF"},
   {"fieldname": "column_break_defaults", "fieldtype": "Column Break"},
