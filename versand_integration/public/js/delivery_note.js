@@ -38,6 +38,14 @@ function choose_carrier_and_create(frm) {
 				reqd: 1,
 			},
 			{
+				fieldname: "versandabsender",
+				label: __("Versandabsender / Marke"),
+				fieldtype: "Link",
+				options: "Versandabsender",
+				default: frm.doc.vi_versandabsender || "",
+				description: __("Leer = Standard-Absender."),
+			},
+			{
 				fieldname: "hint",
 				fieldtype: "HTML",
 				options:
@@ -51,7 +59,12 @@ function choose_carrier_and_create(frm) {
 			d.hide();
 			frappe.call({
 				method: "versand_integration.api.create_shipment_from_delivery_note",
-				args: { delivery_note: frm.doc.name, create_label: 1, carrier: values.carrier },
+				args: {
+					delivery_note: frm.doc.name,
+					create_label: 1,
+					carrier: values.carrier,
+					versandabsender: values.versandabsender || null,
+				},
 				freeze: true,
 				freeze_message: __("Versandetikett wird bei {0} erstellt …", [values.carrier]),
 				callback: (r) => {

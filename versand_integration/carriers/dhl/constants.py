@@ -33,14 +33,38 @@ SANDBOX_RETURN_BILLING_NUMBER = "33333333330701"
 DEFAULT_PROFILE = "STANDARD_GRUPPENPROFIL"
 
 # --- Produkte ------------------------------------------------------------
+# Anzeigename -> DHL-Code. In den Auswahlfeldern steht der lesbare Name,
+# `resolve_product()` übersetzt ihn zurück (Code wird ebenfalls akzeptiert).
 PRODUCTS = {
 	"V01PAK": "DHL Paket (national)",
 	"V53WPAK": "DHL Paket International",
 	"V54EPAK": "DHL Europaket",
-	"V62WP": "Warenpost (Altname)",
-	"V62KP": "DHL Kleinpaket",
+	"V62KP": "DHL Kleinpaket (national)",
+	"V62WP": "Warenpost (Altvertrag)",
 	"V66WPI": "Warenpost International",
 }
+LABELS = list(PRODUCTS.values())
+_LABEL_TO_CODE = {label: code for code, label in PRODUCTS.items()}
+
+
+def resolve_product(value: str | None) -> str | None:
+	if not value:
+		return None
+	value = value.strip()
+	if value in PRODUCTS:  # bereits ein Code
+		return value
+	if value in _LABEL_TO_CODE:  # lesbarer Name
+		return _LABEL_TO_CODE[value]
+	head = value.split(" ")[0].split("—")[0].strip()  # toleriert "V01PAK – ..."
+	if head in PRODUCTS:
+		return head
+	from versand_integration.carriers.exceptions import CarrierConfigError
+
+	raise CarrierConfigError(f"Unbekanntes DHL-Produkt: {value!r}")
+
+
+def product_label(code: str | None) -> str:
+	return PRODUCTS.get(code or "", code or "")
 
 # --- Druckformate ------------------------------------------------------
 # https://developer.dhl.com/ – printFormat

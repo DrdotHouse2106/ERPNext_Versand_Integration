@@ -3,6 +3,7 @@ from __future__ import annotations
 import frappe
 from frappe import _
 
+from versand_integration.absender import resolve as resolve_absender
 from versand_integration.carriers.base import BaseCarrier, LabelPackage, LabelResult
 from versand_integration.carriers.dhl import constants as C
 from versand_integration.carriers.dhl.client import DHLClient
@@ -18,7 +19,8 @@ class DHLCarrier(BaseCarrier):
 
 	def create_label(self, shipment) -> LabelResult:
 		settings = get_dhl_settings()
-		payload = build_order_payload(settings, shipment)
+		absender = resolve_absender(shipment)
+		payload = build_order_payload(settings, shipment, absender)
 		client = DHLClient(settings)
 		response = client.create_orders(
 			payload, validate_only=bool(settings.validate_only)

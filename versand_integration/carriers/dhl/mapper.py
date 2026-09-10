@@ -65,26 +65,23 @@ def _address_block(name1, name2, street, house, addition, postal_code, city, cou
 	return block
 
 
-def _shipper_block(settings):
-	if not (settings.shipper_name1 and settings.shipper_postal_code and settings.shipper_city):
-		raise CarrierConfigError(
-			_("Absenderadresse in den DHL Settings ist unvollständig (Name, PLZ, Ort).")
-		)
-	street = settings.shipper_street
-	house = settings.shipper_house_number
+def _shipper_block(absender):
+	absender.require_address("DHL")
+	street = absender.street
+	house = absender.house_number
 	if street and not house:
 		street, house = split_street(street)
 	return _address_block(
-		settings.shipper_name1,
-		settings.shipper_name2,
+		absender.name1,
+		absender.name2,
 		street,
 		house,
-		settings.shipper_address_addition,
-		settings.shipper_postal_code,
-		settings.shipper_city,
-		settings.shipper_country or "DE",
-		settings.shipper_email,
-		settings.shipper_phone,
+		absender.address_addition,
+		absender.postal_code,
+		absender.city,
+		absender.country or "DE",
+		absender.email,
+		absender.phone,
 	)
 
 
@@ -146,18 +143,24 @@ def _details(weight_kg, length_cm, width_cm, height_cm):
 	return details
 
 
-def build_order_payload(settings, doc) -> dict:
-	product = doc.product or settings.default_product or "V01PAK"
-	billing_number = settings.billing_number
+def build_order_payload(settings, doc, absender) -> dict:
+	product = C.resolve_product(doc.product or settings.default_product) or "V01PAK"
+
+	billing_number = absender.dhl_billing_number(product)
 	if not billing_number and (settings.environment or "Sandbox") == "Sandbox":
 		billing_number = C.SANDBOX_BILLING_NUMBERS.get(product, C.SANDBOX_BILLING_NUMBERS["V01PAK"])
 	if not billing_number:
-		raise CarrierConfigError(_("Abrechnungsnummer (billingNumber) fehlt in den DHL Settings."))
+		raise CarrierConfigError(
+			_("Keine DHL-Abrechnungsnummer für Produkt '{0}' – bitte im Versandabsender '{1}' hinterlegen.").format(
+				C.product_label(product), absender.source
+			)
+		)
 
-	shipper = _shipper_block(settings)
+	shipper = _shipper_block(absender)
 	consignee = _consignee_block(doc)
 	services = _services(doc)
 	ship_date = today()
+	profile = absender.dhl_profile or settings.profile or C.DEFAULT_PROFILE
 
 	# refNo: DHL verlangt 8–35 Zeichen; darunter lieber weglassen.
 	ref = (doc.reference or doc.delivery_note or doc.name or "").strip()[:35]
@@ -191,4 +194,4 @@ def build_order_payload(settings, doc) -> dict:
 			)
 		]
 
-	return {"profile": settings.profile or C.DEFAULT_PROFILE, "shipments": shipments}
+	return {"profile": profile, "shipments": shipments}
