@@ -48,6 +48,7 @@
   "packages",
   "section_services",
   "service_premium",
+  "service_gogreen_plus",
   "service_bulky_goods",
   "service_named_person_only",
   "column_break_services",
@@ -107,7 +108,8 @@
   {"fieldname": "packages", "fieldtype": "Table", "label": "Pakete", "options": "Versandsendung Paket"},
 
   {"fieldname": "section_services", "fieldtype": "Section Break", "label": "Services", "collapsible": 1},
-  {"fieldname": "service_premium", "fieldtype": "Check", "label": "Premium"},
+  {"fieldname": "service_premium", "fieldtype": "Check", "label": "Premium", "description": "Bevorzugte Behandlung/Zustellung – v. a. für Auslandssendungen."},
+  {"fieldname": "service_gogreen_plus", "fieldtype": "Check", "label": "GoGreen Plus", "description": "Klimafreundlicher Versand (muss im DHL-Vertrag freigeschaltet sein)."},
   {"fieldname": "service_bulky_goods", "fieldtype": "Check", "label": "Sperrgut"},
   {"fieldname": "service_named_person_only", "fieldtype": "Check", "label": "Eigenhändig"},
   {"fieldname": "column_break_services", "fieldtype": "Column Break"},

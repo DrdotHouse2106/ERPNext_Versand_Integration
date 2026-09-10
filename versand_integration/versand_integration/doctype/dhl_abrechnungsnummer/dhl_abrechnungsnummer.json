@@ -14,7 +14,7 @@
  "modified": "2026-09-10 12:00:00",
  "modified_by": "Administrator",
  "module": "Versand Integration",
- "name": "Versandabsender DHL Abrechnungsnummer",
+ "name": "DHL Abrechnungsnummer",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",
