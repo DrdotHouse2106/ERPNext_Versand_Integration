@@ -1,0 +1,32 @@
+# Python
+*.pyc
+__pycache__/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Environments
+.venv/
+venv/
+env/
+.env
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Frappe / Node
+node_modules/
+*.log
+
+# Lokale Zugangsdaten – NIEMALS committen
+.secrets/*
+!.secrets/*.example.json
+
+# Hersteller-Doku / große Binaries (nicht ins Deploy-Repo)
+Infos Porto/
+docs/vendor/
+*.zip

@@ -1,0 +1,38 @@
+[build-system]
+requires = ["flit_core >=3.4,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "versand_integration"
+authors = [
+    { name = "Marcel Ulber", email = "drdothouse@gmail.com" },
+]
+description = "Versandetiketten für ERPNext direkt über Carrier-APIs (DHL Parcel DE; Architektur für DPD und Deutsche Post/Portokasse)."
+requires-python = ">=3.11"
+readme = "README.md"
+dynamic = ["version"]
+dependencies = [
+    # Laufzeitabhängigkeiten kommen aus Frappe (requests ist Teil des Frappe-Stacks).
+]
+
+[project.urls]
+Homepage = "https://github.com/marcelulber/versand_integration"
+
+[tool.bench.frappe-dependencies]
+frappe = ">=15.0.0,<17.0.0"
+erpnext = ">=15.0.0,<17.0.0"
+
+[tool.flit.module]
+name = "versand_integration"
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["F", "E", "W", "I", "UP", "B", "RUF"]
+ignore = ["B017", "B018", "E101", "E402", "E501", "F401", "W191", "RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "tab"

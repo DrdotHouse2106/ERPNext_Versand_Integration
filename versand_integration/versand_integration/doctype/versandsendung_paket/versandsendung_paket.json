@@ -1,0 +1,36 @@
+{
+ "actions": [],
+ "creation": "2026-09-10 12:00:00",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "weight_kg",
+  "length_cm",
+  "width_cm",
+  "height_cm",
+  "shipment_number",
+  "tracking_number",
+  "label_file"
+ ],
+ "fields": [
+  {"fieldname": "weight_kg", "fieldtype": "Float", "label": "Gewicht (kg)", "in_list_view": 1, "reqd": 1, "columns": 2},
+  {"fieldname": "length_cm", "fieldtype": "Float", "label": "Länge (cm)", "in_list_view": 1, "columns": 1},
+  {"fieldname": "width_cm", "fieldtype": "Float", "label": "Breite (cm)", "in_list_view": 1, "columns": 1},
+  {"fieldname": "height_cm", "fieldtype": "Float", "label": "Höhe (cm)", "in_list_view": 1, "columns": 1},
+  {"fieldname": "shipment_number", "fieldtype": "Data", "label": "Sendungsnummer", "read_only": 1, "in_list_view": 1, "columns": 2},
+  {"fieldname": "tracking_number", "fieldtype": "Data", "label": "Tracking", "read_only": 1},
+  {"fieldname": "label_file", "fieldtype": "Attach", "label": "Etikett", "read_only": 1}
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-09-10 12:00:00",
+ "modified_by": "Administrator",
+ "module": "Versand Integration",
+ "name": "Versandsendung Paket",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
