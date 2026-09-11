@@ -67,17 +67,39 @@ def product_label(code: str | None) -> str:
 	return PRODUCTS.get(code or "", code or "")
 
 # --- Druckformate ------------------------------------------------------
-# https://developer.dhl.com/ – printFormat
-PRINT_FORMATS = [
-	"910-300-700",       # A4 Common-Label
-	"910-300-700-oz",    # A4 ohne Zusatzetikett
-	"910-300-600",       # 103 x 199 mm (Laserdrucker)
-	"910-300-610",       # 103 x 199 mm ohne Zusatzetikett
-	"910-300-710",       # 103 x 150 mm (Thermodrucker)
-	"100x70mm",
-	"A4",
-]
+# https://developer.dhl.com/ – printFormat. Anzeigename orientiert sich an der
+# Bezeichnung im DHL-Geschäftskundenportal ("Druckeinstellungen einrichten"),
+# damit man die eigene Portal-Einstellung wiedererkennt; der Code steht in
+# Klammern und ist maßgeblich.
+PRINT_FORMATS = {
+	"910-300-700": "Common Label Laserdruck 105×205 mm – DIN A5 (910-300-700)",
+	"910-300-700-oz": "Common Label Laserdruck 105×205 mm – DIN A5, ohne Zusatzetikett (910-300-700-oz)",
+	"910-300-300": "Common Label Laserdruck 105×148 mm – DIN A5 (910-300-300)",
+	"910-300-300-oz": "Common Label Laserdruck 105×148 mm – DIN A5, ohne Zusatzetikett (910-300-300-oz)",
+	"910-300-710": "Common Label Laserdruck 105×208 mm (910-300-710)",
+	"910-300-600": "Common Label Thermodruck 103×199 mm (910-300-600)",
+	"910-300-610": "Common Label Thermodruck 103×199 mm (910-300-610)",
+	"910-300-400": "Common Label Thermodruck 103×150 mm (910-300-400)",
+	"910-300-410": "Common Label Thermodruck 103×150 mm (910-300-410)",
+	"100x70mm": "Thermodruck 100×70 mm (100x70mm)",
+	"A4": "DIN A4 Normalpapier (A4)",
+}
+PRINT_FORMAT_LABELS = list(PRINT_FORMATS.values())
+_PRINT_FORMAT_LABEL_TO_CODE = {label: code for code, label in PRINT_FORMATS.items()}
 DEFAULT_PRINT_FORMAT = "910-300-700"
+
+
+def resolve_print_format(value: str | None) -> str | None:
+	"""Lesbarer Name ODER Rohcode -> DHL-Code. Unbekannte Werte kommen unverändert
+	durch (z. B. wenn DHL das Portal-Format-Angebot mal erweitert)."""
+	if not value:
+		return None
+	value = value.strip()
+	if value in PRINT_FORMATS:
+		return value
+	if value in _PRINT_FORMAT_LABEL_TO_CODE:
+		return _PRINT_FORMAT_LABEL_TO_CODE[value]
+	return value
 
 DOC_FORMATS = ["PDF", "ZPL2"]
 DEFAULT_DOC_FORMAT = "PDF"

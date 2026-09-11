@@ -39,7 +39,7 @@ class DHLClient:
 				self.gkp_username = C.SANDBOX_GKP_USERNAME
 				self.gkp_password = C.SANDBOX_GKP_PASSWORD
 
-		self.print_format = settings.print_format or C.DEFAULT_PRINT_FORMAT
+		self.print_format = C.resolve_print_format(settings.print_format) or C.DEFAULT_PRINT_FORMAT
 		self.doc_format = settings.doc_format or C.DEFAULT_DOC_FORMAT
 
 	# ------------------------------------------------------------------ auth
