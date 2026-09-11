@@ -76,6 +76,12 @@ Nach dem Etikett läuft der Status automatisch nach:
 * **Lieferschein**: Status + „Zugestellt am" gespiegelt, als Spalte/Filter in der Liste.
 * **Hintergrund-Job** (`hourly_long`) aktualisiert alle offenen, gebuchten Sendungen;
   stoppt nach Zustellung/Retoure bzw. nach *X* Tagen (Standard 21).
+* **Alte Sendungsnummern**: Carrier (DHL z. B. nach ~4 Wochen) liefern für abgelaufene
+  Sendungsnummern irgendwann nur noch „Unbekannt"/404. Ein solches Ergebnis
+  überschreibt **nie** einen bereits bekannten Status – sonst würden alte, längst
+  zugestellte Sendungen wieder auf „offen" zurückfallen. Stattdessen wird der letzte
+  bekannte Status eingefroren, `Carrier liefert keine Trackingdaten mehr` gesetzt und
+  die automatische Verfolgung für diese Sendung beendet.
 * **Arbeitsfläche „Versand"** mit Kennzahlen *Sendungen unterwegs* /
   *Zustellprobleme* und Schnellzugriffen.
 * **Benachrichtigung** bei *Zustellproblem*/*Retoure* an alle Nutzer einer Rolle

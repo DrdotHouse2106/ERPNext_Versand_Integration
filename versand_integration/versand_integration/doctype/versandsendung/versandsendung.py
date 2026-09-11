@@ -229,9 +229,22 @@ class Versandsendung(Document):
 
 	def _apply_tracking_result(self, result: TrackingResult) -> bool:
 		previous = self.tracking_status
+
+		# Carrier kennen alte Sendungsnummern irgendwann nicht mehr (DHL z. B. nach
+		# einigen Wochen) und liefern dann "Unbekannt"/404 – auch für Sendungen, deren
+		# letzter bekannter Status längst final war. Ein solches Ergebnis darf einen
+		# bereits bekannten Status NIEMALS überschreiben ("wieder offen"), sonst
+		# würden alte Sendungen reihenweise auf "Unbekannt" zurückfallen.
+		if result.status == cbase.TRACK_UNKNOWN and previous and previous != cbase.TRACK_UNKNOWN:
+			self.tracking_data_expired = 1
+			self.tracking_polling_active = 0
+			self.tracking_last_update = now_datetime()
+			return False
+
 		self.tracking_status = result.status or cbase.TRACK_UNKNOWN
 		self.tracking_status_text = (result.status_text or "")[:280]
 		self.tracking_last_update = result.last_update or now_datetime()
+		self.tracking_data_expired = 0
 		if result.delivered_on:
 			self.tracking_delivered_on = result.delivered_on
 

@@ -66,6 +66,12 @@ frappe.ui.form.on("Versandsendung", {
 				colors[frm.doc.tracking_status] || "gray"
 			);
 		}
+		if (frm.doc.tracking_data_expired) {
+			frm.dashboard.add_indicator(
+				__("Carrier liefert keine Trackingdaten mehr (letzter Stand oben)"),
+				"gray"
+			);
+		}
 	},
 
 	delivery_note(frm) {
