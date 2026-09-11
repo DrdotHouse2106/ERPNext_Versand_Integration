@@ -145,7 +145,10 @@ def _parse_store_orders(res) -> dict:
 	"""zeep-Objekt -> normalisiertes dict.
 
 	Erwartete Struktur (ShipmentService 4.5):
-	  orderResult.shipmentResponses[].parcelInformation[].{parcelLabelNumber, output.content}
+	  orderResult.shipmentResponses[].parcelInformation[].{parcelLabelNumber, output[].{format, content}}
+
+	`output` ist im WSDL wiederholbar (zeep liefert eine Liste, kein einzelnes
+	Objekt) – z. B. für mehrere Dokumente/Formate pro Paket.
 	"""
 	shipment_responses = getattr(res, "shipmentResponses", None) or []
 	if not isinstance(shipment_responses, list):
@@ -162,8 +165,7 @@ def _parse_store_orders(res) -> dict:
 		if not isinstance(parcel_infos, list):
 			parcel_infos = [parcel_infos]
 		for pi in parcel_infos:
-			output = getattr(pi, "output", None)
-			content = getattr(output, "content", None) if output else None
+			content = _first_output_content(getattr(pi, "output", None))
 			if content is None and debug_shape is None:
 				# Zur Fehlersuche: einmalig die komplette (bytes-gekürzte) Antwortstruktur
 				# im api_response der Versandsendung ablegen, falls das Label mal wieder fehlt.
@@ -191,14 +193,32 @@ def _parse_store_orders(res) -> dict:
 	return {"packages": packages, "faults": faults, "raw": raw}
 
 
+def _first_output_content(output):
+	"""`output` ist bei zeep eine Liste von OutputType (format, content) – die erste
+	mit Inhalt gewinnt."""
+	if output is None:
+		return None
+	items = output if isinstance(output, list) else [output]
+	for item in items:
+		content = getattr(item, "content", None)
+		if content:
+			return content
+	return None
+
+
 def _debug_shape(obj, _depth: int = 0):
-	"""zeep-Objekt bytes-sicher in JSON-taugliche Struktur wandeln (für Fehlersuche)."""
-	if _depth > 4 or obj is None:
-		return obj
+	"""zeep-Objekt bytes-sicher in JSON-taugliche Struktur wandeln (für Fehlersuche).
+
+	Bytes/None/Primitives werden IMMER zuerst geprüft, bevor die Tiefenbegrenzung
+	greift – sonst könnten rohe Label-Bytes bei tief verschachtelten Feldern
+	unverkürzt durchrutschen.
+	"""
 	if isinstance(obj, (bytes, bytearray)):
 		return f"<{len(obj)} bytes>"
-	if isinstance(obj, (str, int, float, bool)):
+	if obj is None or isinstance(obj, (str, int, float, bool)):
 		return obj
+	if _depth > 8:
+		return f"<{type(obj).__name__}>"
 	if isinstance(obj, dict):
 		return {k: _debug_shape(v, _depth + 1) for k, v in obj.items()}
 	if isinstance(obj, (list, tuple)):
