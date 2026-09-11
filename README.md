@@ -5,9 +5,9 @@ ohne Drittanbieter-Middleware.
 
 | Carrier | API | Stand |
 | --- | --- | --- |
-| **DHL** | Parcel DE Shipping v2 (REST, OAuth2/Basic) | implementiert, gegen Sandbox testbar |
-| **DPD** | DE WebConnect (SOAP: LoginService V2.0 + ShipmentService V4.5, via `zeep`) | implementiert, gegen Stage testbar – SOAP-Header/Response noch nicht live verifiziert |
-| **Deutsche Post** | Internetmarke OneClickForApp (1C4A) V3 (SOAP) | **BETA** – Vorschau-Modus kostenlos testbar, Produktiv-Modus belastet die Portokasse |
+| **DHL** | Parcel DE Shipping v2 (REST, OAuth2/Basic) | ✅ live verifiziert: Etikett erstellen + stornieren |
+| **DPD** | DE WebConnect (SOAP: LoginService V2.0 + ShipmentService V4.5, via `zeep`) | Login + Sendung erstellen live verifiziert; Label-Extraktion gefixt, Re-Test nach nächstem Deploy ausstehend |
+| **Deutsche Post** | Internetmarke – neue REST-API „Post DE Internetmarke" (DHL Developer Portal, kein Partnervertrag mehr) | **BETA** – Token-Auth implementiert, Marken-Erstellung fehlt noch (API-Referenz noch nicht verfügbar) |
 
 Geschrieben für **Frappe / ERPNext v15–v16**. Python-Abhängigkeit: `zeep` (SOAP, für DPD).
 
@@ -29,16 +29,19 @@ Test-Versandsendungen (kein Kunde/Lieferschein nötig, keine Spuren im System).
   (`DELETE /orders`, „1 von 1 Sendung erfolgreich storniert.") – alles Ende-zu-Ende erfolgreich
 - **DPD**: SOAP-Login (`LoginService.getAuth`, `zeep`-Header-Matching funktioniert) und
   **`storeOrders`** liefern eine echte Sendungsnummer + Tracking-Link. Das Label-PDF fehlte
-  im ersten Lauf (`splitByParcel`-Ursache gefunden und gefixt, Commit `b38fc55`) –
-  **Re-Test nach dem nächsten Deploy steht noch aus**
+  in zwei aufeinanderfolgenden Läufen – zwei Ursachen gefunden und gefixt
+  (`splitByParcel`, dann `output` ist eine Liste statt eines Einzelobjekts; Commits
+  `b38fc55`/`b8aed2e`) – **Re-Test nach dem nächsten Deploy steht noch aus**
 - `bench migrate`-Grundlagen: Custom Fields, Abrechnungsnummern-Tabelle, DocTypes korrekt angelegt
 
 ⚠️ **Noch offen**
 - DPD-Label-Fix erneut testen (siehe oben)
-- Deutsche Post: komplett ungetestet, es fehlt noch der Partnervertrag (`PARTNER_ID`/`SCHLUESSEL`)
+- Deutsche Post: Auth-Token-Austausch implementiert (kein Partnervertrag mehr nötig –
+  läuft über die DHL-Developer-Portal-App), Marken-Erstellung selbst noch offen
+  (API-Referenz fehlt, Status im Developer Portal aktuell „Pending")
 - Mehrmarken-Auflösung (`Versandabsender`) mit mehr als einer Marke, automatischer Briefkopf
 - Sendungsverfolgung: Hintergrund-Job, Statusabgleich, Benachrichtigungen, Arbeitsfläche
-  (Code ist auf der getesteten Instanz noch nicht deployt)
+  (Code ist deployt, aber noch nie live durchgeklickt)
 
 Siehe [„Testvorgehen"](#testvorgehen) unten für die geplante Reihenfolge.
 
@@ -198,8 +201,9 @@ bei einem Fehler dort weitermachen, wo er auftrat:
    und Briefkopf gezogen werden.
 10. Job manuell antriggern statt eine Stunde zu warten:
     `bench --site <site> execute versand_integration.tracking.poll_open_shipments`
-11. **Deutsche Post** erst, wenn der Partnervertrag da ist – dann im **Vorschau-Modus**
-    (kostenlos) testen, siehe oben.
+11. **Deutsche Post**: sobald die API „Post DE Internetmarke" im Developer Portal auf
+    „Aktiviert" steht, erst „Verbindung testen" (Token-Austausch) – die eigentliche
+    Marken-Erstellung ist noch nicht implementiert (siehe oben).
 
 **Wenn etwas fehlschlägt:** Fehlermeldung/Traceback (Desk → *Error Log*, oder die
 Meldung aus dem `frappe.throw`) hierher kopieren – das genügt meist, um den Fehler
@@ -253,24 +257,34 @@ in der EU liegt** – außerhalb der EU nicht (dort ist ggf. Economy günstiger)
 Produkte: `CL` (Classic), `E12/E18/E830` (Express), `IE2` (Int. Express),
 `PSD`/`CL2SHOP`/`SHOP2SHOP` (Shop), `MAIL`.
 
-## Deutsche Post / Internetmarke (1C4A V3) — BETA
+## Deutsche Post / Internetmarke — REST, BETA (Marken-Erstellung fehlt noch)
 
-Braucht einen **Partnervertrag** (`PARTNER_ID`, `SCHLUESSEL`, `KEY_PHASE`) **und**
-ein **Portokasse-Konto** (E-Mail + Passwort). Signatur: `SHA-512` über
-`PARTNER_ID::TIMESTAMP::KEY_PHASE::SCHLUESSEL` (Whitespace entfernt).
+Läuft **nicht mehr** über die alte SOAP-Schnittstelle (OneClickForApp/1C4A) mit
+separatem Partnervertrag. Stattdessen: **dieselbe DHL-Developer-Portal-App** wie
+für DHL Parcel Shipping/Tracking – dort einfach zusätzlich die API
+**„Post DE Internetmarke"** hinzufügen. Kein Partnervertrag nötig.
 
-**Es gibt keinen Testaccount.** Deshalb hat das Feld `Modus` zwei Stufen:
+Auth (von DHL bestätigt):
+1. **App-Ebene**: Header `dhl-client-id` = Client ID/Consumer Key der eigenen
+   Developer-Portal-App (meist derselbe Wert wie `DHL Settings → API Key`).
+2. **User-Ebene**: `POST {Basis-URL}/user` mit `{"username": <Portokasse-E-Mail>,
+   "password": <Portokasse-Passwort>}` → Bearer-Token.
+3. Weitere Aufrufe mit `Authorization: Bearer <token>`.
 
-| Modus | Aufruf | Kosten |
-| --- | --- | --- |
-| **Vorschau** (Default) | `retrievePreviewVoucherPDF` | **0 € – kein Portokasse-Abzug.** PDF ist ein als Muster gekennzeichnetes, **nicht versandfähiges** Voucher. Testet Signatur, Produktcode, Layout, Seitenformat, PDF-Handling. |
-| **Produktiv** | `checkoutShoppingCartPDF` | echte Marke, Portokasse wird belastet (Standardbrief ~0,95 €). Nicht genutzte Marken sind über **1C4Refund** erstattbar (separater Dienst, hier nicht implementiert). |
+**Stolperstein beim ersten Tokenabruf:** HTTP 401 → auf portokasse.deutschepost.de
+einloggen → *Meine Daten → Geschäftsanwendungen* → die eingehende Anwendungs­anfrage
+einmalig freigeben.
 
-„Verbindung testen" ist kostenlos: `retrievePageFormats` (prüft Partner-Signatur)
-+ `authenticateUser` (prüft Portokasse-Login, zeigt Guthaben).
+**Aktueller Stand:** Der Token-Austausch (Schritte 1–3) ist implementiert und über
+**„Verbindung testen"** prüfbar. Die eigentliche **Marken-Erstellung (Warenkorb/
+Checkout) fehlt noch** – dafür gibt es noch keine verifizierte API-Referenz
+(die API steht im Developer Portal aktuell auf *Pending*). `create_label` wirft
+deshalb bewusst einen klaren „noch nicht implementiert"-Fehler statt eine geratene
+Anfrage zu schicken. Sobald die API-Spezifikation vorliegt (oder auf *Aktiviert*
+wechselt und sich per Trial-and-Error erschließen lässt), wird das nachgezogen.
 
-Der Frankierbetrag (Cent) ist nur im Produktiv-Modus nötig – pro Sendung
-(`Frankierbetrag (Cent)`) oder als Default in den Settings.
+Die **Basis-URL** in den Settings ist eine ungeprüfte Vermutung nach dem
+Namensschema der anderen Post-&-Parcel-Germany-APIs – bei Bedarf dort anpassen.
 
 ---
 
@@ -284,7 +298,7 @@ versand_integration/
 │   ├── exceptions.py    # CarrierError / CarrierConfigError / CarrierAPIError
 │   ├── dhl/             # Parcel DE Shipping v2 (REST): constants, client, mapper, carrier
 │   ├── dpd/             # DE WebConnect (SOAP via zeep): constants, client, mapper, carrier
-│   └── deutsche_post/   # Internetmarke 1C4A V3 (SOAP): constants, signature, client, mapper, carrier
+│   └── deutsche_post/   # Internetmarke REST (Developer Portal): constants, client (Auth fertig, Marken-Erstellung offen), carrier
 │   └── */tracking.py    # Sendungsverfolgung je Carrier -> TrackingResult
 ├── absender.py          # Versandabsender/Marke -> ResolvedAbsender (Adresse, DHL-Abr.-Nr.)
 ├── tracking.py          # scheduler_events.hourly_long: poll_open_shipments()
