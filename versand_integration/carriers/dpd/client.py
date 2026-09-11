@@ -99,7 +99,10 @@ class DPDClient:
 		client = self._service(C.SHIPMENT_SERVICE_PATH)
 		print_options = {
 			"printOption": [{"outputFormat": output_format, "paperFormat": paper_format}],
-			"splitByParcel": False,
+			# True: jedes Paket bekommt sein eigenes Label in parcelInformation[].output
+			# (passend zu unserer Paket-für-Paket-Ablage). False kombiniert alle Labels
+			# einer Sendung zu einem Dokument an anderer Stelle in der Antwort.
+			"splitByParcel": True,
 		}
 		try:
 			res = client.service.storeOrders(
@@ -150,6 +153,7 @@ def _parse_store_orders(res) -> dict:
 
 	packages = []
 	faults = []
+	debug_shape = None
 	for sr in shipment_responses:
 		for f in (getattr(sr, "faults", None) or []):
 			faults.append(f"{getattr(f, 'faultCode', '')}: {getattr(f, 'message', f)}")
@@ -160,6 +164,10 @@ def _parse_store_orders(res) -> dict:
 		for pi in parcel_infos:
 			output = getattr(pi, "output", None)
 			content = getattr(output, "content", None) if output else None
+			if content is None and debug_shape is None:
+				# Zur Fehlersuche: einmalig die komplette (bytes-gekürzte) Antwortstruktur
+				# im api_response der Versandsendung ablegen, falls das Label mal wieder fehlt.
+				debug_shape = _debug_shape(sr)
 			packages.append(
 				{
 					"parcel_label_number": getattr(pi, "parcelLabelNumber", None) or mps_id,
@@ -178,4 +186,24 @@ def _parse_store_orders(res) -> dict:
 			{"parcelLabelNumber": p["parcel_label_number"], "mpsId": p["mps_id"]} for p in packages
 		],
 	}
+	if debug_shape is not None:
+		raw["debug_shape_no_label"] = debug_shape
 	return {"packages": packages, "faults": faults, "raw": raw}
+
+
+def _debug_shape(obj, _depth: int = 0):
+	"""zeep-Objekt bytes-sicher in JSON-taugliche Struktur wandeln (für Fehlersuche)."""
+	if _depth > 4 or obj is None:
+		return obj
+	if isinstance(obj, (bytes, bytearray)):
+		return f"<{len(obj)} bytes>"
+	if isinstance(obj, (str, int, float, bool)):
+		return obj
+	if isinstance(obj, dict):
+		return {k: _debug_shape(v, _depth + 1) for k, v in obj.items()}
+	if isinstance(obj, (list, tuple)):
+		return [_debug_shape(v, _depth + 1) for v in list(obj)[:10]]
+	values = getattr(obj, "__values__", None)
+	if isinstance(values, dict):
+		return {k: _debug_shape(v, _depth + 1) for k, v in values.items()}
+	return str(obj)[:200]
