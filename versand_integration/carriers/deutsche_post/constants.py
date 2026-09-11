@@ -1,16 +1,33 @@
-"""Konstanten für Deutsche Post Internetmarke – OneClickForApp (1C4A) V3, SOAP."""
+"""Konstanten für die neue REST-API "Post DE Internetmarke" (DHL Developer Portal).
 
-# Es gibt für 1C4A keine separate Sandbox – Test läuft gegen Produktion mit
-# echtem Portokasse-Guthaben (Kleinstbeträge).
-ENDPOINT = "https://internetmarke.deutschepost.de:443/OneClickForAppV3/OneClickForAppServiceV3"
+Löst die alte SOAP-Anbindung (OneClickForApp / 1C4A V3, Partnervertrag) ab: seit
+kurzem läuft die Internetmarke über dasselbe Developer-Portal-App-Modell wie
+"Parcel DE Shipping"/"Parcel DE Tracking" – kein separater Partnervertrag mehr
+nötig, nur die API im Developer Portal für die eigene App freischalten lassen.
 
-NS_V3 = "http://oneclickforapp.dpag.de/V3"
-NS_SOAP = "http://schemas.xmlsoap.org/soap/envelope/"
+Auth (bestätigt von DHL-Support, s. README):
+  1) App-Ebene: `dhl-client-id`-Header = Client ID/Consumer Key der eigenen
+     Developer-Portal-App (meist dieselbe App wie DHL Settings.api_key).
+  2) User-Ebene: POST {base}/user mit {"username": <Portokasse-E-Mail>,
+     "password": <Portokasse-Passwort>} -> Bearer-Token.
+  3) Weitere Aufrufe mit `Authorization: Bearer <token>`.
 
-SIGNATURE_ALGORITHM = "sha-512"
+WICHTIG: Die genaue Basis-URL sowie die Endpunkte/Bodies für Marken-Erstellung
+und Warenkorb sind (Stand jetzt) NICHT anhand einer offiziellen Spezifikation
+verifiziert – nur der Token-Austausch ist von DHL bestätigt. Bitte die
+Basis-URL in den Deutsche Post Settings prüfen/anpassen, sobald die
+API-Referenz im Developer Portal vorliegt (API-Status dort aktuell "Pending").
+"""
 
-# Häufige Produktcodes (Briefe). Verbindlich ist die per retrievePublicGallery /
-# ProdWS abgerufene Liste – hier nur als Voreinstellung/Hinweis.
+# Bestbekannte Vermutung nach dem Namensschema der anderen "Post & Parcel
+# Germany"-APIs (parcel/de/shipping/v2, parcel/de/tracking/v0, …) – NICHT
+# verifiziert. In den Settings überschreibbar.
+DEFAULT_BASE_URL = "https://api-eu.dhl.com/post/de/shipping/im/v1"
+
+TOKEN_PATH = "/user"  # von DHL bestätigt
+
+# Häufige Produktcodes (Briefe). Verbindlich ist die von der API selbst
+# gelieferte Produktliste – hier nur als Voreinstellung/Hinweis.
 COMMON_PRODUCTS = {
 	"1": "Standardbrief",
 	"21": "Kompaktbrief",
@@ -20,18 +37,14 @@ COMMON_PRODUCTS = {
 }
 DEFAULT_PRODUCT_CODE = "1"
 
-# retrievePageFormats liefert IDs; 1 = DIN A4 Standard.
 DEFAULT_PAGE_FORMAT_ID = 1
 
-# positions/voucherLayout
 VOUCHER_LAYOUTS = ["AddressZone", "FrankingZone"]
 DEFAULT_VOUCHER_LAYOUT = "AddressZone"
 
-# Vorschau-Modus (retrievePreviewVoucherPDF): kostenlos, KEIN Portokasse-Abzug.
-# Die Vorschaumarke trägt keinen gültigen Freimachungsvermerk und darf nicht
-# versendet werden – dient nur zum Test von Signatur, Produktcode, Layout, PDF.
+# Vorschau-Modus: kostenlos, KEIN Portokasse-Abzug, Muster-PDF ohne gültige
+# Frankierung. Konkreter Endpunkt in der neuen REST-API noch offen.
 MODE_PREVIEW = "Vorschau (kostenlos)"
 MODE_PRODUCTIVE = "Produktiv (Portokasse wird belastet)"
 
-# Standard-Motiv aus der öffentlichen Galerie (retrievePublicGallery) für die Vorschau.
 PREVIEW_DEFAULT_IMAGE_ID = "2145969140"
