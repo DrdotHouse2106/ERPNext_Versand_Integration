@@ -17,6 +17,34 @@ Geschrieben für **Frappe / ERPNext v15–v16**. Python-Abhängigkeit: `zeep` (S
 
 ---
 
+## Status: Testphase (Stand 11.09.2026)
+
+**Es gab noch keinen Deploy gegen eine echte ERPNext-Instanz.** Bisher geprüft ist nur,
+was ohne laufendes ERPNext geht:
+
+✅ **Verifiziert**
+- App installiert sauber syntaktisch: alle Python-Module kompilieren, alle DocType-JSONs
+  sind valide und die Feldreferenzen (field_order ↔ Felder) konsistent
+- Reine Logik-Bausteine unit-getestet (ohne Frappe): DHL/DPD-Produktcode-Auflösung
+  (Klartext ↔ Code), Straßen/Hausnummer-Split, Länder-Mapping, DPD-Gewichtsumrechnung
+  (kg → 10-g-Einheiten), Internetmarke-Partnersignatur (SHA-512)
+- DHL-Request/Response-Struktur gegen die offizielle OpenAPI-Spec (v2.1.14) und die
+  DHL-Postman-Onboarding-Collection abgeglichen (Auth, `includeDocs`, Statusfelder,
+  Sandbox-Werte)
+
+⚠️ **Noch offen – braucht den ersten echten Testlauf**
+- DHL: Etikett erstellen/stornieren/Tracking End-to-End gegen die Sandbox
+- DPD: SOAP-Login + `storeOrders` – insbesondere das Header-Matching von `zeep`
+  gegen das WSDL ist bislang nicht live verifiziert (höchstes Risiko im Projekt)
+- Deutsche Post: komplett ungetestet, es fehlt noch der Partnervertrag (`PARTNER_ID`/`SCHLUESSEL`)
+- Mehrmarken-Auflösung (`Versandabsender`), automatischer Briefkopf, Custom Fields/Fixtures
+  beim `bench migrate`
+- Sendungsverfolgung: Hintergrund-Job, Statusabgleich, Benachrichtigungen, Arbeitsfläche
+
+Siehe [„Testvorgehen"](#testvorgehen) unten für die geplante Reihenfolge.
+
+---
+
 ## Was die App macht
 
 | Objekt | Zweck |
@@ -135,6 +163,43 @@ lokale, **nicht** versionierte `.secrets/dhl_credentials.json` an (alles unter
 # bzw.
 bench --site <site> execute versand_integration.utils.credentials.load_from_file
 ```
+
+---
+
+## Testvorgehen
+
+Reihenfolge für den ersten echten Testlauf – jeder Schritt baut auf dem vorherigen auf,
+bei einem Fehler dort weitermachen, wo er auftrat:
+
+1. **Deploy** (Frappe Cloud oder self-hosted) + `bench migrate`. Prüfen: Desk-Suche
+   findet `DHL Settings`, `DPD Settings`, `Deutsche Post Settings`,
+   `Versand Integration Settings`, `Versandabsender`, `Versandsendung`; Arbeitsfläche
+   „Versand" erscheint in der Seitenleiste.
+2. **DHL Settings** ausfüllen (Sandbox) → **„Verbindung testen"**. Das ist der erste
+   echte API-Aufruf – zeigt sofort, ob Auth/Abrechnungsnummer/Absenderadresse stimmen.
+3. **DPD Settings** ausfüllen (Sandbox-Login liegt bereit) → **„Verbindung testen"**.
+   Größtes Risiko im Projekt (SOAP/`zeep`) – wenn das durchläuft, ist der Rest meist Formsache.
+4. Einen **Versandabsender** anlegen (Testadresse + DHL-Sandbox-Abrechnungsnummer).
+5. Einen **Lieferschein** buchen → **Versand → Versandetikett erstellen** → **DHL** wählen.
+   PDF sollte sich öffnen, Status auf „Etikett erstellt" stehen.
+6. Dieselbe Sendung/einen zweiten Lieferschein mit **DPD** wiederholen.
+7. Auf der Versandsendung **„Tracking aktualisieren"** klicken. Sandbox-Sendungsnummern
+   liefern meist „Unbekannt" – das ist ok, es geht darum, dass der Aufruf **fehlerfrei**
+   durchläuft.
+8. Eine Versandsendung **stornieren** → prüfen, dass sie beim Carrier storniert wird
+   und der Lieferschein-Verweis sich löscht.
+9. Zweiten `Versandabsender` mit anderer Adresse/anderem Letter Head anlegen, einem
+   Test-Kunden zuweisen, Lieferschein daraus buchen → prüfen, dass der richtige Absender
+   und Briefkopf gezogen werden.
+10. Job manuell antriggern statt eine Stunde zu warten:
+    `bench --site <site> execute versand_integration.tracking.poll_open_shipments`
+11. **Deutsche Post** erst, wenn der Partnervertrag da ist – dann im **Vorschau-Modus**
+    (kostenlos) testen, siehe oben.
+
+**Wenn etwas fehlschlägt:** Fehlermeldung/Traceback (Desk → *Error Log*, oder die
+Meldung aus dem `frappe.throw`) hierher kopieren – das genügt meist, um den Fehler
+gezielt zu beheben. Ich habe hier keinen Zugriff auf eure ERPNext-Instanz, kann die
+Aufrufe also nicht selbst auslösen.
 
 ---
 
