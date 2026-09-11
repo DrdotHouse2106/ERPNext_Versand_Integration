@@ -32,8 +32,8 @@
  "fields": [
   {"fieldname": "section_zugang", "fieldtype": "Section Break", "label": "Zugang"},
   {"fieldname": "environment", "fieldtype": "Select", "label": "Umgebung", "options": "Sandbox\nProduction", "default": "Sandbox", "reqd": 1},
-  {"fieldname": "delis_id", "fieldtype": "Data", "label": "DELIS-ID"},
-  {"fieldname": "password", "fieldtype": "Password", "label": "Passwort"},
+  {"fieldname": "delis_id", "fieldtype": "Data", "label": "DELIS-ID", "description": "Kein Self-Service-Portal: die DELIS-ID (Web-Login-Kennung) bekommst du von DPD beim Abschluss des \"DPD DE WebConnect\"-Zugangs (über deinen DPD-Vertriebs-/Kundenbetreuer bzw. den DPD-Kundenservice). Für die Sandbox reicht der Testzugang 'sandboxdpd'."},
+  {"fieldname": "password", "fieldtype": "Password", "label": "Passwort", "description": "Passwort zur DELIS-ID oben, ebenfalls von DPD erhalten."},
   {"fieldname": "column_break_zugang", "fieldtype": "Column Break"},
   {"fieldname": "sending_depot", "fieldtype": "Data", "label": "Sende-Depot (optional)", "description": "Leer lassen – kommt normalerweise aus dem Login (getAuth)."},
   {"fieldname": "section_defaults", "fieldtype": "Section Break", "label": "Voreinstellungen"},
