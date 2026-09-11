@@ -19,27 +19,26 @@ Geschrieben für **Frappe / ERPNext v15–v16**. Python-Abhängigkeit: `zeep` (S
 
 ## Status: Testphase (Stand 11.09.2026)
 
-**Es gab noch keinen Deploy gegen eine echte ERPNext-Instanz.** Bisher geprüft ist nur,
-was ohne laufendes ERPNext geht:
+Erster Live-Testlauf gegen eine echte ERPNext-Instanz (Frappe Cloud, Sandbox-Zugänge)
+ist gelaufen. Getestet wurde per API mit freistehenden, danach wieder gelöschten
+Test-Versandsendungen (kein Kunde/Lieferschein nötig, keine Spuren im System).
 
-✅ **Verifiziert**
-- App installiert sauber syntaktisch: alle Python-Module kompilieren, alle DocType-JSONs
-  sind valide und die Feldreferenzen (field_order ↔ Felder) konsistent
-- Reine Logik-Bausteine unit-getestet (ohne Frappe): DHL/DPD-Produktcode-Auflösung
-  (Klartext ↔ Code), Straßen/Hausnummer-Split, Länder-Mapping, DPD-Gewichtsumrechnung
-  (kg → 10-g-Einheiten), Internetmarke-Partnersignatur (SHA-512)
-- DHL-Request/Response-Struktur gegen die offizielle OpenAPI-Spec (v2.1.14) und die
-  DHL-Postman-Onboarding-Collection abgeglichen (Auth, `includeDocs`, Statusfelder,
-  Sandbox-Werte)
+✅ **Live gegen die Sandbox verifiziert**
+- **DHL**: „Verbindung testen" (OAuth2), **Etikett erstellen** (echte Sendungsnummer,
+  gültiges PDF-Label per API heruntergeladen und geprüft) und **Stornieren**
+  (`DELETE /orders`, „1 von 1 Sendung erfolgreich storniert.") – alles Ende-zu-Ende erfolgreich
+- **DPD**: SOAP-Login (`LoginService.getAuth`, `zeep`-Header-Matching funktioniert) und
+  **`storeOrders`** liefern eine echte Sendungsnummer + Tracking-Link. Das Label-PDF fehlte
+  im ersten Lauf (`splitByParcel`-Ursache gefunden und gefixt, Commit `b38fc55`) –
+  **Re-Test nach dem nächsten Deploy steht noch aus**
+- `bench migrate`-Grundlagen: Custom Fields, Abrechnungsnummern-Tabelle, DocTypes korrekt angelegt
 
-⚠️ **Noch offen – braucht den ersten echten Testlauf**
-- DHL: Etikett erstellen/stornieren/Tracking End-to-End gegen die Sandbox
-- DPD: SOAP-Login + `storeOrders` – insbesondere das Header-Matching von `zeep`
-  gegen das WSDL ist bislang nicht live verifiziert (höchstes Risiko im Projekt)
+⚠️ **Noch offen**
+- DPD-Label-Fix erneut testen (siehe oben)
 - Deutsche Post: komplett ungetestet, es fehlt noch der Partnervertrag (`PARTNER_ID`/`SCHLUESSEL`)
-- Mehrmarken-Auflösung (`Versandabsender`), automatischer Briefkopf, Custom Fields/Fixtures
-  beim `bench migrate`
+- Mehrmarken-Auflösung (`Versandabsender`) mit mehr als einer Marke, automatischer Briefkopf
 - Sendungsverfolgung: Hintergrund-Job, Statusabgleich, Benachrichtigungen, Arbeitsfläche
+  (Code ist auf der getesteten Instanz noch nicht deployt)
 
 Siehe [„Testvorgehen"](#testvorgehen) unten für die geplante Reihenfolge.
 
