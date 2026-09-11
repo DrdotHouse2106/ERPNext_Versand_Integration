@@ -18,7 +18,7 @@
   {"fieldname": "section_tracking", "fieldtype": "Section Break", "label": "Sendungsverfolgung"},
   {"fieldname": "tracking_enabled", "fieldtype": "Check", "label": "Automatische Sendungsverfolgung aktiv", "default": 1, "description": "Stündlicher Hintergrund-Job aktualisiert offene Sendungen."},
   {"fieldname": "tracking_interval_hourly", "fieldtype": "Int", "label": "Mindestabstand zwischen Abfragen (Stunden)", "default": 1, "description": "Eine Sendung wird frühestens nach so vielen Stunden erneut abgefragt."},
-  {"fieldname": "tracking_stop_after_days", "fieldtype": "Int", "label": "Verfolgung beenden nach (Tagen)", "default": 21, "description": "Nach so vielen Tagen ohne Zustellung wird die Verfolgung dieser Sendung gestoppt."},
+  {"fieldname": "tracking_stop_after_days", "fieldtype": "Int", "label": "Verfolgung beenden nach (Tagen)", "default": 21, "description": "Nach so vielen Tagen ohne Zustellung wird die Verfolgung dieser Sendung gestoppt. Standard 21 Tage liegt bewusst unter der üblichen Aufbewahrungsfrist der Carrier (DHL z. B. ~4 Wochen) – zusätzlich überschreibt eine 'Unbekannt'-Antwort nie einen bereits bekannten Status (siehe 'Carrier liefert keine Trackingdaten mehr')."},
   {"fieldname": "column_break_tracking", "fieldtype": "Column Break"},
   {"fieldname": "tracking_notify_problems", "fieldtype": "Check", "label": "Bei Zustellproblem / Retoure benachrichtigen", "default": 1},
   {"fieldname": "tracking_notify_role", "fieldtype": "Link", "label": "Benachrichtigen: Rolle", "options": "Role", "default": "Stock Manager", "description": "Alle Benutzer mit dieser Rolle erhalten eine Desk-Benachrichtigung."},
