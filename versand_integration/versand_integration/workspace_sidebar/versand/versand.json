@@ -1,0 +1,17 @@
+{
+ "doctype": "Workspace Sidebar",
+ "name": "Versand",
+ "title": "Versand",
+ "header_icon": "delivery",
+ "module": "Versand Integration",
+ "standard": 0,
+ "items": [
+  {"label": "Home", "type": "Link", "link_type": "Workspace", "link_to": "Versand"},
+  {"label": "Versandsendungen", "type": "Link", "link_type": "DocType", "link_to": "Versandsendung"},
+  {"label": "Versandabsender", "type": "Link", "link_type": "DocType", "link_to": "Versandabsender"},
+  {"label": "DHL Settings", "type": "Link", "link_type": "DocType", "link_to": "DHL Settings"},
+  {"label": "DPD Settings", "type": "Link", "link_type": "DocType", "link_to": "DPD Settings"},
+  {"label": "Deutsche Post Settings", "type": "Link", "link_type": "DocType", "link_to": "Deutsche Post Settings"},
+  {"label": "Versand Integration Settings", "type": "Link", "link_type": "DocType", "link_to": "Versand Integration Settings"}
+ ]
+}
