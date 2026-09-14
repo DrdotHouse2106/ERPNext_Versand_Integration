@@ -77,10 +77,9 @@ class DPClient:
 				url,
 				headers={
 					"dhl-client-id": self.client_id,
-					"Content-Type": "application/json",
 					"Accept": "application/json",
 				},
-				json={"username": self.username, "password": self.password},
+				data={"username": self.username, "password": self.password},
 				timeout=_TIMEOUT,
 			)
 		except requests.RequestException as exc:
