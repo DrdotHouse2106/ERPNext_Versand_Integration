@@ -60,4 +60,8 @@ fixtures = [
 			"Customer-vi_versandabsender",
 		]]],
 	},
+	{
+		"dt": "Workspace",
+		"filters": [["name", "in", ["Versand"]]],
+	},
 ]
