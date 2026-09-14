@@ -88,11 +88,13 @@ class DPClient:
 		if resp.status_code == 401:
 			raise CarrierAPIError(
 				_(
-					"Internetmarke-Login: 401 Unauthorized. Häufigste Ursache: die App wurde in der "
-					"Portokasse noch nicht freigegeben – auf portokasse.deutschepost.de einloggen, "
-					"unter 'Meine Daten -> Geschäftsanwendungen' die Anfrage einmalig freigeben."
-				),
+					"Internetmarke-Login: 401 Unauthorized ({0}). Häufigste Ursache: die App wurde in "
+					"der Portokasse noch nicht freigegeben – auf portokasse.deutschepost.de einloggen, "
+					"unter 'Meine Daten -> Geschäftsanwendungen' die Anfrage einmalig freigeben. Falls "
+					"dort keine offene Anfrage steht, liegt es an etwas anderem (siehe Rohtext oben)."
+				).format(resp.text[:500]),
 				status_code=401,
+				raw={"text": resp.text[:2000]},
 			)
 		if resp.status_code >= 400:
 			raise CarrierAPIError(
