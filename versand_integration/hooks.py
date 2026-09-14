@@ -64,4 +64,8 @@ fixtures = [
 		"dt": "Workspace",
 		"filters": [["name", "in", ["Versand"]]],
 	},
+	{
+		"dt": "Workspace Sidebar",
+		"filters": [["name", "in", ["Versand"]]],
+	},
 ]
