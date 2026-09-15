@@ -129,8 +129,21 @@ class Versandsendung(Document):
 
 		self._apply_label_result(result)
 		if not carrier.supports_tracking:
+			# Automatische Abfrage gibt es (noch) nicht, unabhängig davon ob der
+			# Carrier für diese Sendung/Produkt eine Track-ID geliefert hat
+			# (z. B. Deutsche Post "Basistracking" bei manchen Brief-/
+			# Warensendungs-Produkten) - Polling waere ohnehin wirkungslos.
 			self.tracking_polling_active = 0
-			self.tracking_status_text = _("Für dieses Produkt gibt es keine Sendungsverfolgung.")
+			if self.tracking_number:
+				self.tracking_status_text = _(
+					"Track-ID {0} vorhanden (Basistracking) – eine automatische Abfrage ist für "
+					"{1} noch nicht implementiert. Status ggf. manuell bei der Post-/DHL-"
+					"Sendungsverfolgung prüfen."
+				).format(self.tracking_number, self.carrier)
+			else:
+				self.tracking_status_text = _(
+					"Für dieses Produkt wurde keine Track-ID zurückgegeben (kein Tracking)."
+				)
 		self.save()
 
 		if self._auto_submit_enabled():
@@ -218,12 +231,22 @@ class Versandsendung(Document):
 			if self.tracking_polling_active:
 				# Selbstheilung fuer Sendungen, die vor diesem Fix erstellt wurden.
 				self.tracking_polling_active = 0
-				self.tracking_status_text = _("Für dieses Produkt gibt es keine Sendungsverfolgung.")
+				if self.tracking_number:
+					self.tracking_status_text = _(
+						"Track-ID {0} vorhanden (Basistracking) – eine automatische Abfrage ist "
+						"für {1} noch nicht implementiert."
+					).format(self.tracking_number, self.carrier)
+				else:
+					self.tracking_status_text = _(
+						"Für dieses Produkt wurde keine Track-ID zurückgegeben (kein Tracking)."
+					)
 				self.flags.ignore_validate = True
 				self.save(ignore_permissions=True)
 				if commit:
 					frappe.db.commit()
-			frappe.msgprint(_("Für {0} gibt es keine Sendungsverfolgung.").format(self.carrier))
+			frappe.msgprint(
+				_("Für {0} gibt es (noch) keine automatische Sendungsverfolgung.").format(self.carrier)
+			)
 			return {"status": self.tracking_status}
 		except CarrierError as exc:
 			frappe.throw(_("Tracking fehlgeschlagen: {0}").format(exc))

@@ -92,15 +92,19 @@ Nach dem Etikett läuft der Status automatisch nach:
 * **Benachrichtigung** bei *Zustellproblem*/*Retoure* an alle Nutzer einer Rolle
   (Standard *Stock Manager*), optional zusätzlich per E-Mail.
 
-Konfiguration: **Versand Integration Settings**. Quellen:
-DHL = „Parcel DE Tracking"-API (nur API-Key), DPD = öffentlicher
-tracking.dpd.de-Endpunkt (best effort), Deutsche Post = kein Tracking für Briefe
-(nur bestimmte Einschreiben-Varianten hätten überhaupt eine Sendungsnummer mit
-Tracking, die hier nicht abgebildet sind). Der Hintergrund-Job fragt ohnehin
+Konfiguration: **Versand Integration Settings**. Quellen: DHL = „Parcel DE
+Tracking"-API (nur API-Key), DPD = öffentlicher tracking.dpd.de-Endpunkt
+(best effort). Deutsche Post: manche Produkte (Briefe/Warensendungen mit
+„Basistracking") liefern eine Track-ID (`Voucher.trackId` aus der
+Checkout-Antwort), die wir bereits in `tracking_number` übernehmen – eine
+**automatische Statusabfrage dafür gibt es aber noch nicht** (keine
+verifizierte API-Referenz für diese IDs). Der Hintergrund-Job fragt ohnehin
 nur `carrier in [DHL, DPD]` ab; zusätzlich wird bei Deutsche-Post-Sendungen
 „Automatisch weiter verfolgen" direkt beim Erstellen deaktiviert (statt es
 für immer aktiv, aber wirkungslos stehen zu lassen) – über
-`BaseCarrier.supports_tracking` (`False` bei `DeutschePostCarrier`).
+`BaseCarrier.supports_tracking` (`False` bei `DeutschePostCarrier`). Ist eine
+Track-ID vorhanden, steht das im Statustext, Status lässt sich vorerst nur
+manuell bei der Post-/DHL-Sendungsverfolgung prüfen.
 
 ---
 

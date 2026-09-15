@@ -54,8 +54,11 @@ class DeutschePostCarrier(BaseCarrier):
 	"""
 
 	name = "Deutsche Post"
-	# Internetmarke-Standardbriefe haben grundsätzlich kein Tracking (nur
-	# bestimmte Einschreiben-Varianten, die hier nicht abgebildet sind).
+	# Manche Produkte (Briefe/Warensendungen mit "Basistracking") liefern eine
+	# Track-ID (Voucher.trackId, landet in LabelResult.tracking_number) - die
+	# erfassen wir bereits. Eine automatische Statusabfrage dafür ist aber noch
+	# nicht implementiert (keine verifizierte Tracking-API-Referenz für diese
+	# IDs), deshalb bleibt "Automatisch weiter verfolgen" vorerst aus.
 	supports_tracking = False
 
 	def create_label(self, shipment) -> LabelResult:
