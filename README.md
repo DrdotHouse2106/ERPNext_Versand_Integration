@@ -318,9 +318,9 @@ nie mehr rohe Codes/IDs von Hand:
 
 | Doctype | Quelle | Inhalt |
 | --- | --- | --- |
-| `Deutsche Post Produkt` | `contractProducts.products` | tatsächlich über dein Konto bestellbare Produkte (Code + zuletzt bekannter Preis). Die API liefert keinen Namen dazu – Vorbelegung aus `constants.COMMON_PRODUCTS`, frei umbenennbar. Nur was hier aktiv ist, steht an der Versandsendung zur Auswahl. |
+| `Deutsche Post Produkt` | `contractProducts.products` | tatsächlich über dein Konto bestellbare Produkte (Code + zuletzt bekannter Preis). Die API liefert keinen Namen dazu – Vorbelegung aus `constants.COMMON_PRODUCTS`, frei umbenennbar. Nur was hier aktiv ist, steht an der Versandsendung zur Auswahl. **Live beobachtet:** manche Konten (z. B. frische/Eval-Portokassen) liefern hier gar keine `contractProducts` – dann wird stattdessen direkt mit den Standard-Briefprodukten aus `COMMON_PRODUCTS` vorbefüllt (ohne Preis, den ggf. manuell/per `default_franking_cent`-Fallback ergänzen). |
 | `Deutsche Post Seitenformat` | `pageFormats` | Druck-/Etikettenformate. Beim ersten Import werden `REGULARPAGE`/`ENVELOPE` (A4/Umschlag) automatisch deaktiviert, `LABELPRINTER`/`LABELPAGE` (Etikettenformate wie bei DHL/DPD, z. B. DIN A6) bleiben aktiv. |
-| `Deutsche Post Motiv` | `publicCatalog.items[].images[]` | die **Motiv-ID** – das rein dekorative Bild neben der Frankierung (Jahreszeiten-/Anlass-/Firmenmotive o. Ä.), hat keinen Einfluss auf Preis oder Produkt, komplett optional. |
+| `Deutsche Post Motiv` | `publicGallery.items[].images[]` | die **Motiv-ID** – das rein dekorative Bild neben der Frankierung (Jahreszeiten-/Anlass-/Firmenmotive o. Ä.), hat keinen Einfluss auf Preis oder Produkt, komplett optional. Die OpenAPI-Spec nennt das Feld fälschlich `publicCatalog` – live verifiziert heißt der Schlüssel `publicGallery` (Doku-Fehler bei DHL, `catalog_sync.py` akzeptiert beide Namen). |
 
 `Versandsendung.dp_product_code`/`dp_page_format_id` und die Settings-
 Fallbacks `default_product_code`/`default_page_format_id`/`image_id`/

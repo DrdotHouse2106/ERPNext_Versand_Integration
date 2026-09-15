@@ -2,8 +2,14 @@
 
 - Deutsche Post Seitenformat  <- pageFormats
 - Deutsche Post Produkt       <- contractProducts.products (Code+Preis; die
-  API liefert dafür keinen Namen, deshalb Vorbelegung aus COMMON_PRODUCTS)
-- Deutsche Post Motiv         <- publicCatalog.items[].images[]
+  API liefert dafür keinen Namen, deshalb Vorbelegung aus COMMON_PRODUCTS).
+  Liefert ein Konto gar keine contractProducts (z. B. frische/Eval-
+  Portokasse ohne hinterlegte Vertragsprodukte - live beobachtet), wird
+  stattdessen direkt mit COMMON_PRODUCTS vorbefüllt statt leer zu bleiben.
+- Deutsche Post Motiv         <- publicGallery.items[].images[]. ACHTUNG:
+  live verifiziert heißt der Schlüssel "publicGallery", nicht "publicCatalog"
+  wie in der OpenAPI-Spec dokumentiert (Doku-Fehler bei DHL) - beide Namen
+  werden akzeptiert, falls sich das je ändert.
 
 Bewusstes Verhalten beim wiederholten Sync: Felder, die direkt von der API
 kommen, werden immer aktualisiert; das einzige nutzergesteuerte Feld
@@ -55,6 +61,14 @@ def sync_page_formats(formats: list[dict]) -> int:
 
 
 def sync_products(products: list[dict]) -> int:
+	if not products:
+		# Nicht jedes Konto liefert contractProducts über den Katalog-Endpunkt
+		# (z. B. frische/Eval-Portokassen ohne hinterlegte Vertragsprodukte) -
+		# dann wenigstens mit den bekannten Standard-Briefprodukten vorbefüllen,
+		# statt die Tabelle leer zu lassen. Preis fehlt hier (unbekannt), muss
+		# ggf. manuell nachgetragen oder per Fallback-Frankierbetrag abgedeckt werden.
+		products = [{"productCode": int(code)} for code in C.COMMON_PRODUCTS]
+
 	count = 0
 	for product in products:
 		code = product.get("productCode")
@@ -108,7 +122,9 @@ def sync_motifs(catalog_items: list[dict]) -> int:
 def sync_catalog(catalog: dict) -> dict:
 	page_formats = catalog.get("pageFormats") or []
 	products = ((catalog.get("contractProducts") or {}).get("products")) or []
-	motifs = ((catalog.get("publicCatalog") or {}).get("items")) or []
+	# Live-verifiziert (2026-09): der tatsächliche Schlüssel heißt "publicGallery",
+	# nicht "publicCatalog" wie in der OpenAPI-Spec dokumentiert (Doku-Fehler bei DHL).
+	motifs = (catalog.get("publicGallery") or catalog.get("publicCatalog") or {}).get("items") or []
 	return {
 		"page_formats": sync_page_formats(page_formats),
 		"products": sync_products(products),
