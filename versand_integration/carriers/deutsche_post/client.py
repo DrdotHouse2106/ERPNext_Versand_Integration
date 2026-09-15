@@ -1,10 +1,11 @@
 """REST-Client für "Post DE Internetmarke" (DHL Developer Portal).
 
-Ersetzt die alte SOAP/1C4A-Anbindung. Auth-Ablauf (App-Key + Portokasse-Login
--> Bearer-Token) ist von DHL bestätigt, siehe `constants.py`. Marken-Erstellung
-(Warenkorb/Checkout) ist noch nicht anhand einer offiziellen Spezifikation
-verifiziert – die entsprechenden Methoden werfen bewusst einen klaren Fehler
-statt eine vermutete Struktur zu raten.
+Ersetzt die alte SOAP/1C4A-Anbindung. Auth-Ablauf laut offizieller API-Referenz
+(POST /user, application/x-www-form-urlencoded, grant_type=client_credentials +
+client_id + client_secret + Portokasse-Login als username/password -> Bearer-
+Token). Marken-Erstellung (Warenkorb/Checkout) ist noch nicht anhand einer
+offiziellen Spezifikation verifiziert – die entsprechenden Methoden werfen
+bewusst einen klaren Fehler statt eine vermutete Struktur zu raten.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ class DPClient:
 		self.settings = settings
 		self.base_url = (settings.api_base_url or C.DEFAULT_BASE_URL).rstrip("/")
 		self.client_id = (settings.get_password("client_id", raise_exception=False) or "").strip()
+		self.client_secret = (settings.get_password("client_secret", raise_exception=False) or "").strip()
 		self.username = (settings.portokasse_username or "").strip()
 		self.password = (settings.get_password("portokasse_password", raise_exception=False) or "").strip()
 		self._token = None
@@ -33,6 +35,7 @@ class DPClient:
 			label
 			for label, val in (
 				("Client ID", self.client_id),
+				("Client Secret", self.client_secret),
 				("Portokasse E-Mail", self.username),
 				("Portokasse Passwort", self.password),
 			)
@@ -75,11 +78,14 @@ class DPClient:
 		try:
 			resp = requests.post(
 				url,
-				headers={
-					"dhl-client-id": self.client_id,
-					"Accept": "application/json",
+				headers={"Accept": "application/json"},
+				data={
+					"grant_type": "client_credentials",
+					"client_id": self.client_id,
+					"client_secret": self.client_secret,
+					"username": self.username,
+					"password": self.password,
 				},
-				data={"username": self.username, "password": self.password},
 				timeout=_TIMEOUT,
 			)
 		except requests.RequestException as exc:
@@ -88,10 +94,10 @@ class DPClient:
 		if resp.status_code == 401:
 			raise CarrierAPIError(
 				_(
-					"Internetmarke-Login: 401 Unauthorized ({0}). Häufigste Ursache: die App wurde in "
-					"der Portokasse noch nicht freigegeben – auf portokasse.deutschepost.de einloggen, "
-					"unter 'Meine Daten -> Geschäftsanwendungen' die Anfrage einmalig freigeben. Falls "
-					"dort keine offene Anfrage steht, liegt es an etwas anderem (siehe Rohtext oben)."
+					"Internetmarke-Login: 401 Unauthorized ({0}). Pruefe Client ID, Client Secret sowie "
+					"Portokasse-Login. Falls DHL explizit meldet, dass die App noch nicht freigegeben "
+					"ist: auf portokasse.deutschepost.de -> 'Meine Daten -> Geschäftsanwendungen' die "
+					"Anfrage einmalig freigeben."
 				).format(resp.text[:500]),
 				status_code=401,
 				raw={"text": resp.text[:2000]},
@@ -116,7 +122,7 @@ class DPClient:
 			"ok": True,
 			"messages": [
 				_(
-					"Bearer-Token erhalten (Client ID + Portokasse-Login akzeptiert). "
+					"Bearer-Token erhalten (Client ID/Secret + Portokasse-Login akzeptiert). "
 					"Marken-Erstellung selbst ist noch nicht implementiert (siehe App-Beschreibung / README)."
 				)
 			],
