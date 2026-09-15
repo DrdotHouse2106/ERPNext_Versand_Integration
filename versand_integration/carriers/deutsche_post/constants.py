@@ -36,17 +36,67 @@ CATALOG_PATH = "/app/catalog"  # GET, Motiv-/Bildkataloge (?types=PUBLIC&types=P
 CATALOG_TYPE_PUBLIC = "PUBLIC"
 CATALOG_TYPE_PAGE_FORMATS = "PAGE_FORMATS"
 
-# Verbindlich ist die Produktliste, die die API pro Konto selbst liefert
+# Vorrangig ist die Produktliste, die die API pro Konto selbst liefert
 # (GET /app/catalog -> contractProducts, siehe catalog_sync.py + Doctype
-# "Deutsche Post Produkt"). Die API liefert dafür keinen Namen, nur Code +
-# Preis - diese Namen sind nur eine Vorbelegung fürs erste Anlegen und dürfen
-# im Doctype frei umbenannt werden.
+# "Deutsche Post Produkt"). Liefert das Konto dort nichts (z. B. frische/
+# Eval-Portokasse ohne hinterlegte Vertragsprodukte - live beobachtet), wird
+# stattdessen dieses Wörterbuch als Fallback genutzt: {Code: (Name, Preis in
+# Cent)}, abgetippt aus der offiziellen Preisliste "PPL60_EPORTO" (Deutsche
+# Post, Stand 2026-05-13, vom User bereitgestellt) - keine Vermutung, echte
+# Vertragsdaten. Zwei Kilotarif-International-Produkte (10162/10166), die
+# laut Preisliste einen gesonderten Vertrag brauchen, sind bewusst
+# ausgelassen. Namen/Preise dürfen im Doctype frei angepasst werden, falls
+# sich die offizielle Liste ändert.
 COMMON_PRODUCTS = {
-	"1": "Standardbrief",
-	"21": "Kompaktbrief",
-	"31": "Großbrief",
-	"41": "Maxibrief",
-	"79": "Postkarte",
+	"1": ("Standardbrief", 95),
+	"11": ("Kompaktbrief", 110),
+	"21": ("Großbrief", 180),
+	"31": ("Maxibrief", 290),
+	"41": ("Maxibrief bis 2000 g + Zusatzentgelt MBf", 510),
+	"51": ("Postkarte", 95),
+	"290": ("Warensendung", 270),
+	"331": ("Warensendung 2.000 + Gewichtszuschlag", 355),
+	"401": ("Streifbandzeitung bis 50 g", 107),
+	"407": ("Streifbandzeitung 51 g bis 500 g", 173),
+	"405": ("Streifbandzeitung 501 g bis 1000 g", 286),
+	"347": ("Dialogpost Karte Internetmarke", 36),
+	"348": ("Dialogpost Standard Internetmarke bis 20g", 38),
+	"349": ("Dialogpost Standard Internetmarke 21 - 50g", 42),
+	"350": ("Dialogpost Groß Internetmarke bis 50g", 54),
+	"351": ("Dialogpost Groß Internetmarke 51 - 100g", 67),
+	"352": ("Dialogpost Groß Internetmarke 101 - 250g", 82),
+	"353": ("Dialogpost Groß Internetmarke 251 - 500g", 94),
+	"354": ("Dialogpost Groß Internetmarke 501 - 1000g", 111),
+	"1002": ("Standardbrief Integral + EINSCHREIBEN EINWURF", 330),
+	"1007": ("Standardbrief Integral + EINSCHREIBEN", 360),
+	"1008": ("Standardbrief Integral + EINSCHREIBEN + RÜCKSCHEIN", 580),
+	"1012": ("Kompaktbrief Integral + EINSCHREIBEN EINWURF", 345),
+	"1017": ("Kompaktbrief Integral + EINSCHREIBEN", 375),
+	"1018": ("Kompaktbrief Integral + EINSCHREIBEN + RÜCKSCHEIN", 595),
+	"1022": ("Großbrief Integral + EINSCHREIBEN EINWURF", 415),
+	"1027": ("Großbrief Integral + EINSCHREIBEN", 445),
+	"1028": ("Großbrief Integral + EINSCHREIBEN + RÜCKSCHEIN", 665),
+	"1032": ("Maxibrief Integral + EINSCHREIBEN EINWURF", 525),
+	"1037": ("Maxibrief Integral + EINSCHREIBEN", 555),
+	"1038": ("Maxibrief Integral + EINSCHREIBEN + RÜCKSCHEIN", 775),
+	"1042": ("Maxibrief Integral + Zusatzentgelt MBf + EINSCHREIBEN EINWURF", 745),
+	"1047": ("Maxibrief Integral + Zusatzentgelt MBf + EINSCHREIBEN", 775),
+	"1048": ("Maxibrief Integral + Zusatzentgelt MBf + EINSCHREIBEN + RÜCKSCHEIN", 995),
+	"1052": ("Postkarte Integral + EINSCHREIBEN EINWURF", 330),
+	"1057": ("Postkarte Integral + EINSCHREIBEN", 360),
+	"1058": ("Postkarte Integral + EINSCHREIBEN + RÜCKSCHEIN", 580),
+	"10001": ("Standardbrief Intern. GK", 125),
+	"10011": ("Kompaktbrief Intern. GK", 180),
+	"10051": ("Großbrief Intern. GK", 330),
+	"10071": ("Maxibrief Intern. bis 1.000g GK", 650),
+	"10091": ("Maxibrief Intern. bis 2.000g GK", 1700),
+	"10201": ("Postkarte Intern. GK", 125),
+	"11006": ("Standardbrief Intern. GK Integral + EINSCHREIBEN", 495),
+	"11016": ("Kompaktbrief Intern. GK Integral + EINSCHREIBEN", 550),
+	"11056": ("Großbrief Intern. GK Integral + EINSCHREIBEN", 700),
+	"11076": ("Maxibrief Intern. bis 1.000g GK Integral + EINSCHREIBEN", 1020),
+	"11096": ("Maxibrief Intern. bis 2.000g GK Integral + EINSCHREIBEN", 2070),
+	"11202": ("Postkarte Intern. GK Integral + EINSCHREIBEN", 495),
 }
 DEFAULT_PRODUCT_CODE = "1"
 

@@ -2,6 +2,7 @@
  "actions": [],
  "creation": "2026-09-16 12:00:00",
  "description": "Produkte, die über dein Internetmarke-Konto tatsächlich bestellbar sind – Spiegelbild von GET /app/catalog (contractProducts). Über 'Katalog aktualisieren' in den Deutsche Post Settings befüllen; danach hier per 'Deaktiviert' ausblenden, was du nicht anbieten willst. Die Bezeichnung kommt nicht von der API (nur Code+Preis) und darf frei umbenannt werden.",
+ "autoname": "Prompt",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
