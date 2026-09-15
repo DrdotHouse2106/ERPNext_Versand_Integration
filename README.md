@@ -264,27 +264,43 @@ separatem Partnervertrag. Stattdessen: **dieselbe DHL-Developer-Portal-App** wie
 für DHL Parcel Shipping/Tracking – dort einfach zusätzlich die API
 **„Post DE Internetmarke"** hinzufügen. Kein Partnervertrag nötig.
 
-Auth (von DHL bestätigt):
-1. **App-Ebene**: Header `dhl-client-id` = Client ID/Consumer Key der eigenen
-   Developer-Portal-App (meist derselbe Wert wie `DHL Settings → API Key`).
-2. **User-Ebene**: `POST {Basis-URL}/user` mit `{"username": <Portokasse-E-Mail>,
-   "password": <Portokasse-Passwort>}` → Bearer-Token.
-3. Weitere Aufrufe mit `Authorization: Bearer <token>`.
+Auth (laut offizieller API-Referenz, `POST {Basis-URL}/user`,
+`application/x-www-form-urlencoded`):
 
-**Stolperstein beim ersten Tokenabruf:** HTTP 401 → auf portokasse.deutschepost.de
-einloggen → *Meine Daten → Geschäftsanwendungen* → die eingehende Anwendungs­anfrage
-einmalig freigeben.
+```
+grant_type=client_credentials
+client_id=<Client ID / Consumer Key der Developer-Portal-App>
+client_secret=<Client Secret / Consumer Secret der Developer-Portal-App>
+username=<Portokasse-E-Mail>
+password=<Portokasse-Passwort>   # max. 22 Zeichen
+```
 
-**Aktueller Stand:** Der Token-Austausch (Schritte 1–3) ist implementiert und über
+→ Bearer-Token, weitere Aufrufe mit `Authorization: Bearer <token>`. Client
+ID/Secret sind i. d. R. dieselben Werte wie `DHL Settings → API Key/Secret`
+(eine gemeinsame Developer-Portal-App für alle DHL-/Post-APIs).
+
+**Stolperstein beim ersten Tokenabruf:** HTTP 401 kann zwei Ursachen haben –
+entweder ist die App in der Portokasse noch nicht freigegeben (auf
+portokasse.deutschepost.de → *Meine Daten → Geschäftsanwendungen* die
+Anfrage einmalig freigeben), oder Client ID/Secret bzw. die Basis-URL stimmen
+nicht. Die Fehlermeldung zeigt seit Commit `63129e3` den Rohtext der
+DHL-Antwort mit an, damit sich das unterscheiden lässt.
+
+**Aktueller Stand:** Der Token-Austausch ist implementiert und über
 **„Verbindung testen"** prüfbar. Die eigentliche **Marken-Erstellung (Warenkorb/
-Checkout) fehlt noch** – dafür gibt es noch keine verifizierte API-Referenz
-(die API steht im Developer Portal aktuell auf *Pending*). `create_label` wirft
-deshalb bewusst einen klaren „noch nicht implementiert"-Fehler statt eine geratene
-Anfrage zu schicken. Sobald die API-Spezifikation vorliegt (oder auf *Aktiviert*
-wechselt und sich per Trial-and-Error erschließen lässt), wird das nachgezogen.
+Checkout) fehlt noch** – dafür gibt es noch keine verifizierte API-Referenz.
+`create_label` wirft deshalb bewusst einen klaren „noch nicht implementiert"-
+Fehler statt eine geratene Anfrage zu schicken.
 
-Die **Basis-URL** in den Settings ist eine ungeprüfte Vermutung nach dem
-Namensschema der anderen Post-&-Parcel-Germany-APIs – bei Bedarf dort anpassen.
+Die **Basis-URL** (der Host/Präfix vor `/user`) in den Settings ist weiterhin
+eine ungeprüfte Vermutung nach dem Namensschema der anderen
+Post-&-Parcel-Germany-APIs – nur der Pfad `/user` selbst ist durch die
+offizielle API-Referenz bestätigt. Bei Bedarf im Developer Portal gegenprüfen.
+
+Laut API-Referenz gibt es außerdem **Sandbox-Zugangsdaten mit Standardwerten**
+für `username`/`password` (ohne echten Portokasse-Verbrauch) – die konkreten
+Werte standen nicht im bisher verfügbaren Auszug der Doku; sobald bekannt,
+kann darüber gefahrlos gegen echte Marken getestet werden.
 
 ---
 
