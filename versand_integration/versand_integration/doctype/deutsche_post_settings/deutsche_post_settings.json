@@ -31,7 +31,9 @@
   "column_break_absender",
   "sender_zip",
   "sender_city",
-  "sender_country"
+  "sender_country",
+  "section_diagnose",
+  "last_catalog_response"
  ],
  "fields": [
   {"fieldname": "beta_html", "fieldtype": "HTML", "options": "<div class=\"alert alert-info\">Internetmarke läuft über die neue REST-API im DHL Developer Portal (kein Partnervertrag mehr nötig – im selben Developer-Portal-App die API <b>\"Post DE Internetmarke\"</b> hinzufügen). Auth und Marken-Erstellung sind gegen die offizielle API-Referenz implementiert und <b>live bestätigt</b>. Im Modus <b>Vorschau</b> wird eine kostenlose Muster-Marke geholt (kein Portokasse-Abzug), im Modus <b>Produktiv</b> eine echte Marke gekauft (Frankierbetrag unten hinterlegen). Retoure (Erstattung nicht genutzter Marken) läuft beim Stornieren der Versandsendung automatisch mit.</div>"},
@@ -60,7 +62,9 @@
   {"fieldname": "column_break_absender", "fieldtype": "Column Break"},
   {"fieldname": "sender_zip", "fieldtype": "Data", "label": "PLZ"},
   {"fieldname": "sender_city", "fieldtype": "Data", "label": "Ort"},
-  {"fieldname": "sender_country", "fieldtype": "Data", "label": "Land", "default": "DE", "description": "ISO-Ländercode (z. B. DE) oder exakter ERPNext-Ländername."}
+  {"fieldname": "sender_country", "fieldtype": "Data", "label": "Land", "default": "DE", "description": "ISO-Ländercode (z. B. DE) oder exakter ERPNext-Ländername."},
+  {"fieldname": "section_diagnose", "fieldtype": "Section Break", "label": "Diagnose", "collapsible": 1},
+  {"fieldname": "last_catalog_response", "fieldtype": "Code", "options": "JSON", "label": "Letzte Katalog-Antwort (roh)", "read_only": 1, "no_copy": 1, "description": "Wird bei jedem 'Katalog aktualisieren' überschrieben – zur Fehlersuche, falls Produkte/Motive/Seitenformate leer bleiben."}
  ],
  "issingle": 1,
  "links": [],
