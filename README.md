@@ -7,7 +7,7 @@ ohne Drittanbieter-Middleware.
 | --- | --- | --- |
 | **DHL** | Parcel DE Shipping v2 (REST, OAuth2/Basic) | ✅ live verifiziert: Etikett erstellen + stornieren |
 | **DPD** | DE WebConnect (SOAP: LoginService V2.0 + ShipmentService V4.5, via `zeep`) | Login + Sendung erstellen live verifiziert; Label-Extraktion gefixt, Re-Test nach nächstem Deploy ausstehend |
-| **Deutsche Post** | Internetmarke – neue REST-API „Post DE Internetmarke" (DHL Developer Portal, kein Partnervertrag mehr) | **BETA** – ✅ Token-Auth live verifiziert (Bearer-Token erhalten), Marken-Erstellung fehlt noch (API-Referenz noch nicht verfügbar) |
+| **Deutsche Post** | Internetmarke – neue REST-API „Post DE Internetmarke" (DHL Developer Portal, kein Partnervertrag mehr) | Auth + Marken-Erstellung (Vorschau/Produktiv) implementiert gegen offizielle API-Referenz, Token-Austausch live verifiziert; Marken-Erstellung selbst noch nicht live durchprobiert |
 
 Geschrieben für **Frappe / ERPNext v15–v16**. Python-Abhängigkeit: `zeep` (SOAP, für DPD).
 
@@ -33,12 +33,13 @@ Test-Versandsendungen (kein Kunde/Lieferschein nötig, keine Spuren im System).
   (`splitByParcel`, dann `output` ist eine Liste statt eines Einzelobjekts; Commits
   `b38fc55`/`b8aed2e`) – **Re-Test nach dem nächsten Deploy steht noch aus**
 - `bench migrate`-Grundlagen: Custom Fields, Abrechnungsnummern-Tabelle, DocTypes korrekt angelegt
+- **Deutsche Post / Internetmarke**: Auth-Token-Austausch (`POST /user`) live verifiziert
+  (Bearer-Token + Portokasse-Guthaben abgerufen)
 
 ⚠️ **Noch offen**
 - DPD-Label-Fix erneut testen (siehe oben)
-- Deutsche Post: Auth-Token-Austausch implementiert (kein Partnervertrag mehr nötig –
-  läuft über die DHL-Developer-Portal-App), Marken-Erstellung selbst noch offen
-  (API-Referenz fehlt, Status im Developer Portal aktuell „Pending")
+- Deutsche Post: Marken-Erstellung (Vorschau/Produktiv, `POST /app/shoppingcart/pdf`) gegen
+  die offizielle API-Referenz implementiert, aber noch nicht live durchprobiert
 - Mehrmarken-Auflösung (`Versandabsender`) mit mehr als einer Marke, automatischer Briefkopf
 - Sendungsverfolgung: Hintergrund-Job, Statusabgleich, Benachrichtigungen, Arbeitsfläche
   (Code ist deployt, aber noch nie live durchgeklickt)
@@ -64,7 +65,8 @@ PDF öffnet sich, Sendungsnummer & Tracking-Link stehen am Lieferschein und an d
 Versandsendung. Storno der Versandsendung:
 * DHL – Sendung wird per `DELETE /orders` gelöscht.
 * DPD – nicht nötig (nicht manifestierte Sendungen einfach nicht abschließen).
-* Deutsche Post – Erstattung läuft über den separaten Dienst 1C4Refund (nicht in dieser App).
+* Deutsche Post – Retoure (Erstattung) wird automatisch per `POST /app/retoure` beantragt,
+  sofern im Produktiv-Modus eine echte Marke gekauft wurde.
 
 ---
 
@@ -201,9 +203,9 @@ bei einem Fehler dort weitermachen, wo er auftrat:
    und Briefkopf gezogen werden.
 10. Job manuell antriggern statt eine Stunde zu warten:
     `bench --site <site> execute versand_integration.tracking.poll_open_shipments`
-11. **Deutsche Post**: sobald die API „Post DE Internetmarke" im Developer Portal auf
-    „Aktiviert" steht, erst „Verbindung testen" (Token-Austausch) – die eigentliche
-    Marken-Erstellung ist noch nicht implementiert (siehe oben).
+11. **Deutsche Post**: erst „Verbindung testen" (Token-Austausch + Portokasse-Guthaben),
+    dann eine Versandsendung im Modus **Vorschau** anlegen (kostenlos) und erst danach,
+    mit bewusst gesetztem Frankierbetrag, im Modus **Produktiv** (siehe oben).
 
 **Wenn etwas fehlschlägt:** Fehlermeldung/Traceback (Desk → *Error Log*, oder die
 Meldung aus dem `frappe.throw`) hierher kopieren – das genügt meist, um den Fehler
@@ -257,15 +259,17 @@ in der EU liegt** – außerhalb der EU nicht (dort ist ggf. Economy günstiger)
 Produkte: `CL` (Classic), `E12/E18/E830` (Express), `IE2` (Int. Express),
 `PSD`/`CL2SHOP`/`SHOP2SHOP` (Shop), `MAIL`.
 
-## Deutsche Post / Internetmarke — REST, BETA (Marken-Erstellung fehlt noch)
+## Deutsche Post / Internetmarke — REST
 
 Läuft **nicht mehr** über die alte SOAP-Schnittstelle (OneClickForApp/1C4A) mit
 separatem Partnervertrag. Stattdessen: **dieselbe DHL-Developer-Portal-App** wie
 für DHL Parcel Shipping/Tracking – dort einfach zusätzlich die API
-**„Post DE Internetmarke"** hinzufügen. Kein Partnervertrag nötig.
+**„Post DE Internetmarke"** hinzufügen. Kein Partnervertrag nötig. Implementiert
+gegen die offizielle OpenAPI-Spec ("Deutsche Post INTERNETMARKE API", Division
+Post & Parcel Germany, v1.30).
 
-Auth (laut offizieller API-Referenz, `POST {Basis-URL}/user`,
-`application/x-www-form-urlencoded`):
+**Auth** (`POST {Basis-URL}/user`, `application/x-www-form-urlencoded`,
+Basis-URL `https://api-eu.dhl.com/post/de/shipping/im/v1` = Produktions-Server):
 
 ```
 grant_type=client_credentials
@@ -277,45 +281,47 @@ password=<Portokasse-Passwort>   # max. 22 Zeichen
 
 → Bearer-Token, weitere Aufrufe mit `Authorization: Bearer <token>`. Client
 ID/Secret sind i. d. R. dieselben Werte wie `DHL Settings → API Key/Secret`
-(eine gemeinsame Developer-Portal-App für alle DHL-/Post-APIs).
+(eine gemeinsame Developer-Portal-App für alle DHL-/Post-APIs). **Live
+bestätigt** (Bearer-Token via „Verbindung testen" erhalten).
 
-**Stolperstein beim ersten Tokenabruf:** HTTP 401 kann zwei Ursachen haben –
-entweder ist die App in der Portokasse noch nicht freigegeben (auf
-portokasse.deutschepost.de → *Meine Daten → Geschäftsanwendungen* die
-Anfrage einmalig freigeben), oder Client ID/Secret bzw. die Basis-URL stimmen
-nicht. Die Fehlermeldung zeigt seit Commit `63129e3` den Rohtext der
-DHL-Antwort mit an, damit sich das unterscheiden lässt.
+**Stolperstein beim ersten Tokenabruf:** HTTP 401 kann mehrere Ursachen haben –
+App in der Portokasse noch nicht freigegeben (auf portokasse.deutschepost.de →
+*Meine Daten → Geschäftsanwendungen* die Anfrage einmalig freigeben), falsche
+Client ID/Secret, oder fehlendes `client_secret` im Request. Die Fehlermeldung
+zeigt den Rohtext der DHL-Antwort mit an.
 
-**Aktueller Stand:** Der Token-Austausch ist **live gegen die echte API
-bestätigt** (Bearer-Token via „Verbindung testen" erhalten). Die **Basis-URL
-`https://api-eu.dhl.com/post/de/shipping/im/v1` ist offiziell bestätigt**
-(API-Referenz "Post DE Internetmarke", Division Post & Parcel Germany,
-Produktions-Server) – keine Vermutung mehr.
+**Marken-Erstellung** (`POST /app/shoppingcart/pdf`, `mapper.py` baut die
+Bodies aus Versandsendung + Settings + Versandabsender):
 
-Die Referenz listet für die eigentliche Marken-Erstellung folgende Endpunkte
-(Pfade bekannt, `constants.py`), aber noch **keine Request-/Response-Bodies**
-(die stecken in der über "Download API Spec" verfügbaren OpenAPI-Datei, die
-uns noch nicht vorliegt):
+| Settings-Modus | Query-Param | Body-Typ | Kosten |
+| --- | --- | --- | --- |
+| Vorschau (kostenlos) | `?validate=true` | `AppShoppingCartPreviewPDFRequest` (nur Produktcode/Layout/Seitenformat, keine Adressen) | keine |
+| Produktiv | `?directCheckout=true` | `AppShoppingCartPDFRequest` (eine `AppShoppingCartPDFPosition`, bei Layout `ADDRESS_ZONE` inkl. Absender-/Empfängeradresse) | Portokasse wird um `total` (Cent) belastet |
 
-| Endpunkt | Zweck |
-| --- | --- |
-| `PUT /app/wallet` | Portokasse-Guthaben aufladen |
-| `POST /app/shoppingcart` | Warenkorb initialisieren → `shopOrderId` |
-| `GET /app/shoppingcart/{shopOrderId}` | Warenkorb abrufen |
-| `POST /app/shoppingcart/png` | PNG-Marke: Checkout **oder** Vorschau (unterschiedliches Schema, Vorschau ohne Adressen) |
-| `POST /app/shoppingcart/pdf` | PDF-Marke: Checkout **oder** Vorschau |
-| `GET`/`POST /app/retoure` | Retourenstatus abfragen / Retoure beantragen |
-| `GET /app/catalog` | Motiv-/Bildkataloge abrufen |
-| `GET /user/profile` | Profildaten des autorisierten Users |
+`total`/`Frankierbetrag` kommt aus `Versandsendung.dp_franking_cent`
+(Override) oder `Deutsche Post Settings.default_franking_cent` – **wird nicht
+geraten**, DHL liefert die Preisliste separat (PPL), der Wert muss eingetragen
+werden, sonst wirft `create_label` einen klaren Fehler statt eine falsche
+Belastung zu riskieren. Die Antwort (`link` zur PDF-Marke, `shoppingCart`
+mit `shopOrderId`/`voucherId`) wird als PDF heruntergeladen und an die
+Versandsendung angehängt; `shopOrderId`/`voucherId` bleiben im Feld
+`api_response` erhalten.
 
-`create_label` wirft weiterhin bewusst einen klaren „noch nicht
-implementiert"-Fehler, bis die Bodies der Checkout-Endpunkte bekannt sind –
-raten wollen wir hier nicht (Portokasse-Guthaben steht auf dem Spiel).
+**Storno/Retoure:** Beim Abbrechen einer submitted Versandsendung
+(`on_cancel`) wird – falls `api_response` eine `shopOrderId` + Voucher
+enthält (Produktiv-Modus) – automatisch `POST /app/retoure` aufgerufen, um
+die Erstattung der nicht genutzten Marke zu beantragen. Im Vorschau-Modus
+gibt's nichts zu erstatten (keine echte Marke gekauft), das wird erkannt
+und übersprungen.
 
-Laut API-Referenz gibt es außerdem **Sandbox-Zugangsdaten mit Standardwerten**
-für `username`/`password` (ohne echten Portokasse-Verbrauch) – die konkreten
-Werte standen nicht im bisher verfügbaren Auszug der Doku; sobald bekannt,
-kann darüber gefahrlos gegen echte Marken getestet werden.
+**Noch nicht getestet:** Die Marken-Erstellung selbst ist gegen die Spec
+implementiert, aber noch nicht live gegen die echte API durchprobiert (im
+Gegensatz zum Auth-Flow). Adressen: `postalCode` muss exakt 5-stellig sein
+(nur deutsche PLZ, wirft sonst einen klaren Fehler statt einen ungültigen
+Request zu schicken).
+
+Referenzmaterial (Spec-YAML, alte SOAP-Doku) liegt lokal in `Infos Porto/`
+(gitignored).
 
 ---
 
@@ -329,7 +335,7 @@ versand_integration/
 │   ├── exceptions.py    # CarrierError / CarrierConfigError / CarrierAPIError
 │   ├── dhl/             # Parcel DE Shipping v2 (REST): constants, client, mapper, carrier
 │   ├── dpd/             # DE WebConnect (SOAP via zeep): constants, client, mapper, carrier
-│   └── deutsche_post/   # Internetmarke REST (Developer Portal): constants, client (Auth fertig, Marken-Erstellung offen), carrier
+│   └── deutsche_post/   # Internetmarke REST (Developer Portal): constants, client, mapper, carrier – Auth + Marken-Erstellung
 │   └── */tracking.py    # Sendungsverfolgung je Carrier -> TrackingResult
 ├── absender.py          # Versandabsender/Marke -> ResolvedAbsender (Adresse, DHL-Abr.-Nr.)
 ├── tracking.py          # scheduler_events.hourly_long: poll_open_shipments()

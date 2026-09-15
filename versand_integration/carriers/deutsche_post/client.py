@@ -1,11 +1,10 @@
 """REST-Client für "Post DE Internetmarke" (DHL Developer Portal).
 
-Ersetzt die alte SOAP/1C4A-Anbindung. Auth-Ablauf laut offizieller API-Referenz
-(POST /user, application/x-www-form-urlencoded, grant_type=client_credentials +
-client_id + client_secret + Portokasse-Login als username/password -> Bearer-
-Token). Marken-Erstellung (Warenkorb/Checkout) ist noch nicht anhand einer
-offiziellen Spezifikation verifiziert – die entsprechenden Methoden werfen
-bewusst einen klaren Fehler statt eine vermutete Struktur zu raten.
+Ersetzt die alte SOAP/1C4A-Anbindung. Auth-Ablauf und Warenkorb-/Checkout-
+Endpunkte laut offizieller OpenAPI-Spec ("Deutsche Post INTERNETMARKE API",
+Post & Parcel Germany, v1.30) – live verifiziert. Dieser Client kennt keine
+ERPNext-Dokumente, er nimmt fertige Payload-Dicts entgegen (gebaut von
+`mapper.py`) und schickt sie roh weiter.
 """
 
 from __future__ import annotations
@@ -28,6 +27,7 @@ class DPClient:
 		self.username = (settings.portokasse_username or "").strip()
 		self.password = (settings.get_password("portokasse_password", raise_exception=False) or "").strip()
 		self._token = None
+		self._wallet_balance = None
 
 	# --------------------------------------------------------------- helpers
 	def _check_config(self):
@@ -46,7 +46,7 @@ class DPClient:
 				_("Deutsche Post Settings unvollständig: {0}").format(", ".join(missing))
 			)
 
-	def _request(self, method: str, path: str, *, headers=None, json_body=None, auth: bool = True) -> dict:
+	def _request(self, method: str, path: str, *, headers=None, json_body=None, params=None, auth: bool = True) -> dict:
 		url = f"{self.base_url}{path}"
 		hdrs = {"Accept": "application/json", "Content-Type": "application/json"}
 		if headers:
@@ -54,7 +54,7 @@ class DPClient:
 		if auth:
 			hdrs["Authorization"] = f"Bearer {self._get_token()}"
 		try:
-			resp = requests.request(method, url, headers=hdrs, json=json_body, timeout=_TIMEOUT)
+			resp = requests.request(method, url, headers=hdrs, json=json_body, params=params, timeout=_TIMEOUT)
 		except requests.RequestException as exc:
 			raise CarrierAPIError(_("Internetmarke nicht erreichbar: {0}").format(exc)) from exc
 
@@ -109,44 +109,50 @@ class DPClient:
 			)
 
 		body = resp.json() if resp.content else {}
-		token = body.get("token") or body.get("access_token") or (resp.text or "").strip('"')
+		token = body.get("access_token") or body.get("token") or (resp.text or "").strip('"')
 		if not token:
 			raise CarrierAPIError(_("Internetmarke-Login: keine Token im Antworttext gefunden."))
 		self._token = token
+		self._wallet_balance = body.get("walletBalance")
 		return token
 
 	# ------------------------------------------------------------ self-test
 	def test_connection(self) -> dict:
+		self._wallet_balance = None
 		token = self._get_token()
+		balance = self._wallet_balance
+		balance_msg = (
+			_("Portokasse-Guthaben: {0} €.").format(f"{balance / 100:.2f}")
+			if balance is not None
+			else ""
+		)
 		return {
 			"ok": True,
 			"messages": [
-				_(
-					"Bearer-Token erhalten (Client ID/Secret + Portokasse-Login akzeptiert). "
-					"Marken-Erstellung selbst ist noch nicht implementiert (siehe App-Beschreibung / README)."
+				_("Bearer-Token erhalten (Client ID/Secret + Portokasse-Login akzeptiert). {0}").format(
+					balance_msg
 				)
 			],
-			"wallet_balance": None,
+			"wallet_balance": balance,
 			"_token_preview": (token[:8] + "…") if token else None,
 		}
 
-	# ------------------------------------------------------- noch nicht fertig
-	def retrieve_preview_voucher_pdf(self, **kwargs):
-		raise CarrierConfigError(
-			_(
-				"Marken-Erstellung für die neue Internetmarke-REST-API ist noch nicht implementiert – "
-				"es fehlt die offizielle API-Referenz für Warenkorb/Checkout. "
-				"Der Button 'Verbindung testen' funktioniert bereits."
-			)
+	# ------------------------------------------------------- Marken-Erstellung
+	def retrieve_preview_voucher_pdf(self, body: dict) -> dict:
+		"""POST /app/shoppingcart/pdf?validate=true – kostenlose Vorschau, kein Portokasse-Abzug."""
+		return self._request(
+			"POST", C.SHOPPING_CART_PDF_PATH, json_body=body, params={"validate": "true"}
 		)
 
-	def checkout_shopping_cart_pdf(self, *args, **kwargs):
-		raise CarrierConfigError(
-			_(
-				"Marken-Erstellung für die neue Internetmarke-REST-API ist noch nicht implementiert – "
-				"es fehlt die offizielle API-Referenz für Warenkorb/Checkout."
-			)
+	def checkout_shopping_cart_pdf(self, body: dict) -> dict:
+		"""POST /app/shoppingcart/pdf?directCheckout=true – echter Kauf, Portokasse wird belastet."""
+		return self._request(
+			"POST", C.SHOPPING_CART_PDF_PATH, json_body=body, params={"directCheckout": "true"}
 		)
+
+	def request_retoure(self, body: dict) -> dict:
+		"""POST /app/retoure – Erstattung nicht genutzter Marken beantragen."""
+		return self._request("POST", C.RETOURE_PATH, json_body=body)
 
 	def download_pdf(self, link: str) -> bytes:
 		try:

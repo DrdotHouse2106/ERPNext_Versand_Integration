@@ -127,7 +127,7 @@ def _from_settings(carrier: str) -> ResolvedAbsender:
 			house_number=s.sender_house_number,
 			postal_code=s.sender_zip or "",
 			city=s.sender_city or "",
-			country=s.sender_country or "Deutschland",
+			country=s.sender_country or "DE",
 		)
 
 	s = frappe.get_cached_doc("DHL Settings")
