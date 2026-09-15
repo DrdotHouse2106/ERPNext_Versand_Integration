@@ -287,16 +287,30 @@ nicht. Die Fehlermeldung zeigt seit Commit `63129e3` den Rohtext der
 DHL-Antwort mit an, damit sich das unterscheiden lässt.
 
 **Aktueller Stand:** Der Token-Austausch ist **live gegen die echte API
-bestätigt** (Bearer-Token via „Verbindung testen" erhalten, Commit `6622179`).
-Die eigentliche **Marken-Erstellung (Warenkorb/Checkout) fehlt noch** – dafür
-gibt es noch keine verifizierte API-Referenz. `create_label` wirft deshalb
-bewusst einen klaren „noch nicht implementiert"-Fehler statt eine geratene
-Anfrage zu schicken.
+bestätigt** (Bearer-Token via „Verbindung testen" erhalten). Die **Basis-URL
+`https://api-eu.dhl.com/post/de/shipping/im/v1` ist offiziell bestätigt**
+(API-Referenz "Post DE Internetmarke", Division Post & Parcel Germany,
+Produktions-Server) – keine Vermutung mehr.
 
-Die **Basis-URL** (der Host/Präfix vor `/user`) in den Settings ist weiterhin
-eine ungeprüfte Vermutung nach dem Namensschema der anderen
-Post-&-Parcel-Germany-APIs – nur der Pfad `/user` selbst ist durch die
-offizielle API-Referenz bestätigt. Bei Bedarf im Developer Portal gegenprüfen.
+Die Referenz listet für die eigentliche Marken-Erstellung folgende Endpunkte
+(Pfade bekannt, `constants.py`), aber noch **keine Request-/Response-Bodies**
+(die stecken in der über "Download API Spec" verfügbaren OpenAPI-Datei, die
+uns noch nicht vorliegt):
+
+| Endpunkt | Zweck |
+| --- | --- |
+| `PUT /app/wallet` | Portokasse-Guthaben aufladen |
+| `POST /app/shoppingcart` | Warenkorb initialisieren → `shopOrderId` |
+| `GET /app/shoppingcart/{shopOrderId}` | Warenkorb abrufen |
+| `POST /app/shoppingcart/png` | PNG-Marke: Checkout **oder** Vorschau (unterschiedliches Schema, Vorschau ohne Adressen) |
+| `POST /app/shoppingcart/pdf` | PDF-Marke: Checkout **oder** Vorschau |
+| `GET`/`POST /app/retoure` | Retourenstatus abfragen / Retoure beantragen |
+| `GET /app/catalog` | Motiv-/Bildkataloge abrufen |
+| `GET /user/profile` | Profildaten des autorisierten Users |
+
+`create_label` wirft weiterhin bewusst einen klaren „noch nicht
+implementiert"-Fehler, bis die Bodies der Checkout-Endpunkte bekannt sind –
+raten wollen wir hier nicht (Portokasse-Guthaben steht auf dem Spiel).
 
 Laut API-Referenz gibt es außerdem **Sandbox-Zugangsdaten mit Standardwerten**
 für `username`/`password` (ohne echten Portokasse-Verbrauch) – die konkreten
