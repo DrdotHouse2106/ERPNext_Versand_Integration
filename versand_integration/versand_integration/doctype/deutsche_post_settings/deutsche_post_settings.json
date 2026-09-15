@@ -52,7 +52,7 @@
   {"fieldname": "image_id", "fieldtype": "Link", "options": "Deutsche Post Motiv", "link_filters": "[[\"Deutsche Post Motiv\",\"disabled\",\"=\",0]]", "label": "Motiv (optional)", "description": "Dekoratives Bild neben der Frankierung, rein optisch, kein Einfluss auf Preis/Produkt. Erst über 'Katalog aktualisieren' befüllen; leer lassen für Marken ohne Motiv."},
   {"fieldname": "preview_image_id", "fieldtype": "Link", "options": "Deutsche Post Motiv", "link_filters": "[[\"Deutsche Post Motiv\",\"disabled\",\"=\",0]]", "label": "Motiv für Vorschau", "description": "Nur für den Vorschau-Modus. Leer = API-Standardmotiv."},
   {"fieldname": "column_break_defaults", "fieldtype": "Column Break"},
-  {"fieldname": "default_franking_cent", "fieldtype": "Int", "label": "Standard-Frankierbetrag (Cent, Fallback)", "description": "Wird im Produktiv-Modus normalerweise automatisch aus dem Produktkatalog der API ermittelt. Nur nötig, falls dein Konto keine Vertragspreise liefert. Pro Sendung überschreibbar."},
+  {"fieldname": "default_franking_cent", "fieldtype": "Int", "label": "Standard-Frankierbetrag (Cent, Fallback)", "fetch_from": "default_product_code.price_cent", "description": "Wird beim Auswählen des Standard-Produkts automatisch übernommen, bleibt aber änderbar. Nur nötig, falls dein Konto keine Vertragspreise liefert. Pro Sendung überschreibbar."},
   {"fieldname": "auto_submit", "fieldtype": "Check", "label": "Versandsendung nach Marke automatisch buchen", "default": 1},
   {"fieldname": "section_absender", "fieldtype": "Section Break", "label": "Absender"},
   {"fieldname": "sender_name1", "fieldtype": "Data", "label": "Name / Firma"},
