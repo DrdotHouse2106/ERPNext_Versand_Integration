@@ -24,9 +24,14 @@ import frappe
 
 from versand_integration.carriers.deutsche_post import constants as C
 
-# A4-Papier/Umschlag ist für unseren Versandlabel-Anwendungsfall meist Rauschen -
-# beim ersten Import deaktiviert, Etikettenformate bleiben aktiv.
-_NOISY_PAGE_TYPES = {"REGULARPAGE", "ENVELOPE"}
+# Live beobachtet: der Seitenformat-Katalog ist keine kleine, generische Liste
+# (A4 vs. Etikett) wie bei DHL/DPD, sondern hunderte sehr konkrete Label-
+# Drucker-Modelle/Rollenformate (Brother DK-xxxx, Dymo, Leitz ICON, Seiko,
+# Herma, ...) - "LABELPRINTER"/"LABELPAGE" ist dabei praktisch der Großteil
+# des gesamten Katalogs, filtert also kaum etwas heraus. Deshalb: ALLES beim
+# ersten Import deaktiviert lassen, der Nutzer aktiviert gezielt das/die
+# Format(e) für den Drucker, den er tatsächlich besitzt (Titel durchsuchen,
+# z. B. nach "Versand-Etikett" oder dem eigenen Druckermodell).
 
 
 def sync_page_formats(formats: list[dict]) -> int:
@@ -51,7 +56,7 @@ def sync_page_formats(formats: list[dict]) -> int:
 				{
 					"doctype": "Deutsche Post Seitenformat",
 					"name": name,
-					"disabled": 1 if page_type in _NOISY_PAGE_TYPES else 0,
+					"disabled": 1,
 					**values,
 				}
 			)
