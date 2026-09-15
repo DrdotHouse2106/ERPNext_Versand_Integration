@@ -360,6 +360,12 @@ die `LabelResult` zurückgibt, plus Eintrag in `registry.py` und ein Settings-Do
 * Alle API-Aufrufe laufen server-seitig; die whitelisted-Methoden prüfen
   `Delivery Note`-Leserechte.
 
+## Unterstützung
+
+Wenn dir dieses Plugin Arbeit erspart: Ich freue mich über eine freiwillige
+Spende via [PayPal.me/DrdotHouse](https://paypal.me/DrdotHouse) – keine
+Verpflichtung, kein Support-Anspruch, einfach eine nette Geste.
+
 ## Lizenz
 
 MIT
