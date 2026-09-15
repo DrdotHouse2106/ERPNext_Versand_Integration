@@ -12,6 +12,9 @@
   {"label": "DHL Settings", "type": "Link", "link_type": "DocType", "link_to": "DHL Settings"},
   {"label": "DPD Settings", "type": "Link", "link_type": "DocType", "link_to": "DPD Settings"},
   {"label": "Deutsche Post Settings", "type": "Link", "link_type": "DocType", "link_to": "Deutsche Post Settings"},
+  {"label": "Deutsche Post Produkt", "type": "Link", "link_type": "DocType", "link_to": "Deutsche Post Produkt"},
+  {"label": "Deutsche Post Seitenformat", "type": "Link", "link_type": "DocType", "link_to": "Deutsche Post Seitenformat"},
+  {"label": "Deutsche Post Motiv", "type": "Link", "link_type": "DocType", "link_to": "Deutsche Post Motiv"},
   {"label": "Versand Integration Settings", "type": "Link", "link_type": "DocType", "link_to": "Versand Integration Settings"}
  ]
 }
