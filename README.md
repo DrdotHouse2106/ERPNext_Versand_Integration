@@ -7,7 +7,7 @@ ohne Drittanbieter-Middleware.
 | --- | --- | --- |
 | **DHL** | Parcel DE Shipping v2 (REST, OAuth2/Basic) | ✅ live verifiziert: Etikett erstellen + stornieren |
 | **DPD** | DE WebConnect (SOAP: LoginService V2.0 + ShipmentService V4.5, via `zeep`) | Login + Sendung erstellen live verifiziert; Label-Extraktion gefixt, Re-Test nach nächstem Deploy ausstehend |
-| **Deutsche Post** | Internetmarke – neue REST-API „Post DE Internetmarke" (DHL Developer Portal, kein Partnervertrag mehr) | **BETA** – Token-Auth implementiert, Marken-Erstellung fehlt noch (API-Referenz noch nicht verfügbar) |
+| **Deutsche Post** | Internetmarke – neue REST-API „Post DE Internetmarke" (DHL Developer Portal, kein Partnervertrag mehr) | **BETA** – ✅ Token-Auth live verifiziert (Bearer-Token erhalten), Marken-Erstellung fehlt noch (API-Referenz noch nicht verfügbar) |
 
 Geschrieben für **Frappe / ERPNext v15–v16**. Python-Abhängigkeit: `zeep` (SOAP, für DPD).
 
@@ -286,11 +286,12 @@ Anfrage einmalig freigeben), oder Client ID/Secret bzw. die Basis-URL stimmen
 nicht. Die Fehlermeldung zeigt seit Commit `63129e3` den Rohtext der
 DHL-Antwort mit an, damit sich das unterscheiden lässt.
 
-**Aktueller Stand:** Der Token-Austausch ist implementiert und über
-**„Verbindung testen"** prüfbar. Die eigentliche **Marken-Erstellung (Warenkorb/
-Checkout) fehlt noch** – dafür gibt es noch keine verifizierte API-Referenz.
-`create_label` wirft deshalb bewusst einen klaren „noch nicht implementiert"-
-Fehler statt eine geratene Anfrage zu schicken.
+**Aktueller Stand:** Der Token-Austausch ist **live gegen die echte API
+bestätigt** (Bearer-Token via „Verbindung testen" erhalten, Commit `6622179`).
+Die eigentliche **Marken-Erstellung (Warenkorb/Checkout) fehlt noch** – dafür
+gibt es noch keine verifizierte API-Referenz. `create_label` wirft deshalb
+bewusst einen klaren „noch nicht implementiert"-Fehler statt eine geratene
+Anfrage zu schicken.
 
 Die **Basis-URL** (der Host/Präfix vor `/user`) in den Settings ist weiterhin
 eine ungeprüfte Vermutung nach dem Namensschema der anderen
