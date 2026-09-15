@@ -69,10 +69,11 @@ def sync_products(products: list[dict]) -> int:
 	if not products:
 		# Nicht jedes Konto liefert contractProducts über den Katalog-Endpunkt
 		# (z. B. frische/Eval-Portokassen ohne hinterlegte Vertragsprodukte) -
-		# dann wenigstens mit den bekannten Standard-Briefprodukten vorbefüllen,
-		# statt die Tabelle leer zu lassen. Preis fehlt hier (unbekannt), muss
-		# ggf. manuell nachgetragen oder per Fallback-Frankierbetrag abgedeckt werden.
-		products = [{"productCode": int(code)} for code in C.COMMON_PRODUCTS]
+		# dann mit der offiziellen Preisliste (COMMON_PRODUCTS: Code -> Name +
+		# Preis in Cent) vorbefüllen, statt die Tabelle leer zu lassen.
+		products = [
+			{"productCode": int(code), "price": price} for code, (_name, price) in C.COMMON_PRODUCTS.items()
+		]
 
 	count = 0
 	for product in products:
@@ -85,12 +86,13 @@ def sync_products(products: list[dict]) -> int:
 			if price is not None:
 				frappe.db.set_value("Deutsche Post Produkt", name, "price_cent", price)
 		else:
+			seed_name, seed_price = C.COMMON_PRODUCTS.get(name, (f"Produkt {name}", None))
 			doc = frappe.get_doc(
 				{
 					"doctype": "Deutsche Post Produkt",
 					"name": name,
-					"title": C.COMMON_PRODUCTS.get(name, f"Produkt {name}"),
-					"price_cent": price,
+					"title": seed_name,
+					"price_cent": price if price is not None else seed_price,
 					"disabled": 0,
 				}
 			)

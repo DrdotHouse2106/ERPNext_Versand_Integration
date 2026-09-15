@@ -2,6 +2,7 @@
  "actions": [],
  "creation": "2026-09-15 12:00:00",
  "description": "Seitenformate für Internetmarke-Marken – Spiegelbild von GET /app/catalog?types=PAGE_FORMATS. Über 'Katalog aktualisieren' in den Deutsche Post Settings befüllen/aktualisieren, nicht von Hand anlegen. ACHTUNG: der Katalog enthält typischerweise mehrere hundert Einträge (konkrete Label-Drucker-Modelle wie Brother/Dymo/Leitz/Seiko/Herma, nicht nur 'A4 vs. Etikett') – beim Import bleibt deshalb alles deaktiviert. Nach Bezeichnung filtern/suchen (z. B. 'Versand-Etikett' oder das eigene Druckermodell) und gezielt aktivieren.",
+ "autoname": "Prompt",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
