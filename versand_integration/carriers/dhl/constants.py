@@ -127,6 +127,18 @@ ALPHA2_TO_ALPHA3 = {
 	"CY": "CYP", "US": "USA", "CA": "CAN", "AU": "AUS", "NZ": "NZL", "JP": "JPN",
 	"CN": "CHN", "HK": "HKG", "SG": "SGP", "AE": "ARE", "TR": "TUR", "LI": "LIE",
 	"MC": "MCO", "SM": "SMR", "AD": "AND", "VA": "VAT", "RS": "SRB", "BA": "BIH",
+
 	"ME": "MNE", "MK": "MKD", "AL": "ALB", "UA": "UKR", "MD": "MDA", "BR": "BRA",
 	"MX": "MEX", "ZA": "ZAF", "IN": "IND", "IL": "ISR", "KR": "KOR", "TH": "THA",
+}
+
+# Von Hand eingetragene deutsche Ländernamen weichen oft vom ERPNext-
+# Ländernamen ab (z. B. "Deutschland" statt "Germany") und würden sonst mit
+# "Ländercode unbekannt" abbrechen, obwohl der gemeinte Code eindeutig ist.
+COUNTRY_NAME_ALIASES = {
+	"DEUTSCHLAND": "DE", "GERMANY": "DE",
+	"ÖSTERREICH": "AT", "OESTERREICH": "AT", "AUSTRIA": "AT",
+	"SCHWEIZ": "CH", "SWITZERLAND": "CH",
+	"FRANKREICH": "FR", "ITALIEN": "IT", "SPANIEN": "ES", "NIEDERLANDE": "NL",
+	"BELGIEN": "BE", "LUXEMBURG": "LU", "DÄNEMARK": "DK", "POLEN": "PL",
 }

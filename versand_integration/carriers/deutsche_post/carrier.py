@@ -10,10 +10,36 @@ from versand_integration.carriers.base import BaseCarrier, LabelResult
 from versand_integration.carriers.deutsche_post import constants as C
 from versand_integration.carriers.deutsche_post import mapper
 from versand_integration.carriers.deutsche_post.client import DPClient
+from versand_integration.carriers.exceptions import CarrierError
 
 
 def get_dp_settings():
 	return frappe.get_cached_doc("Deutsche Post Settings")
+
+
+def _resolve_franking_cent(doc, settings, client) -> int | None:
+	"""Auflösung Frankierbetrag: Sendungs-Override -> Live-Preis aus dem
+	Produktkatalog (GET /app/catalog) -> Standardbetrag in den Settings.
+	Kein Raten: kommt aus keiner Quelle ein Wert, gibt es None zurück und
+	`mapper.build_checkout_request` wirft einen klaren Fehler.
+	"""
+	explicit = getattr(doc, "dp_franking_cent", None)
+	if explicit:
+		return int(explicit)
+
+	try:
+		code = mapper.product_code(doc, settings)
+		catalog = client.get_catalog([C.CATALOG_TYPE_PUBLIC, C.CATALOG_TYPE_PAGE_FORMATS])
+		products = ((catalog.get("contractProducts") or {}).get("products")) or []
+		for product in products:
+			if product.get("productCode") == code:
+				price = product.get("price")
+				if price:
+					return int(price)
+	except CarrierError:
+		pass  # Katalog nicht verfügbar/kein Vertragsprodukt -> Fallback unten
+
+	return int(settings.default_franking_cent) if settings.default_franking_cent else None
 
 
 class DeutschePostCarrier(BaseCarrier):
@@ -39,7 +65,8 @@ class DeutschePostCarrier(BaseCarrier):
 		else:
 			absender = absender_mod.resolve(shipment)
 			absender.require_address("Deutsche Post")
-			body = mapper.build_checkout_request(shipment, settings, absender)
+			franking_cent = _resolve_franking_cent(shipment, settings, client)
+			body = mapper.build_checkout_request(shipment, settings, absender, franking_cent)
 			response = client.checkout_shopping_cart_pdf(body)
 
 		link = response.get("link")

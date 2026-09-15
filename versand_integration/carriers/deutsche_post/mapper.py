@@ -57,12 +57,14 @@ def receiver_address(doc) -> dict:
 	)
 
 
-def _product_code(doc, settings) -> int:
-	raw = (getattr(doc, "dp_product_code", None) or settings.default_product_code or C.DEFAULT_PRODUCT_CODE).strip()
+def product_code(doc, settings) -> int:
+	"""Löst Klartext-Auswahl (Select) ODER Rohcode zu einem int-Produktcode auf."""
+	raw = getattr(doc, "dp_product_code", None) or settings.default_product_code or C.DEFAULT_PRODUCT_CODE
+	code = C.resolve_product(raw) or raw
 	try:
-		return int(raw)
+		return int(code)
 	except ValueError as exc:
-		raise CarrierConfigError(_("Internetmarke: Produktcode '{0}' ist keine Zahl.").format(raw)) from exc
+		raise CarrierConfigError(_("Internetmarke: Produktcode '{0}' ist keine Zahl.").format(code)) from exc
 
 
 def _voucher_layout_api(settings) -> str:
@@ -81,7 +83,7 @@ def build_preview_request(doc, settings) -> dict:
 	"""AppShoppingCartPreviewPDFRequest – kostenlos, keine Adressen/kein Guthaben nötig."""
 	body = {
 		"type": "AppShoppingCartPreviewPDFRequest",
-		"productCode": _product_code(doc, settings),
+		"productCode": product_code(doc, settings),
 		"voucherLayout": _voucher_layout_api(settings),
 		"pageFormatId": _page_format_id(doc, settings),
 	}
@@ -91,22 +93,26 @@ def build_preview_request(doc, settings) -> dict:
 	return body
 
 
-def build_checkout_request(doc, settings, absender) -> dict:
-	"""AppShoppingCartPDFRequest – echter Kauf, Portokasse wird belastet."""
-	franking_cent = getattr(doc, "dp_franking_cent", None) or settings.default_franking_cent
+def build_checkout_request(doc, settings, absender, franking_cent: int | None) -> dict:
+	"""AppShoppingCartPDFRequest – echter Kauf, Portokasse wird belastet.
+
+	`franking_cent` wird vom Carrier übergeben (Auflösung: Sendung ->
+	Live-Preis aus dem Produktkatalog -> Standardbetrag in den Settings),
+	damit dieser reine Payload-Builder keinen eigenen API-Zugriff braucht.
+	"""
 	if not franking_cent:
 		raise CarrierConfigError(
 			_(
-				"Internetmarke (Produktiv-Modus): Frankierbetrag fehlt – bitte an der "
-				"Versandsendung ('Frankierbetrag (Cent)') oder als Standardbetrag in den "
-				"Deutsche Post Settings hinterlegen (Preisliste kommt von DHL)."
+				"Internetmarke (Produktiv-Modus): Frankierbetrag fehlt – weder automatisch aus dem "
+				"Produktkatalog ermittelbar, noch an der Versandsendung ('Frankierbetrag (Cent)') "
+				"oder als Standardbetrag in den Deutsche Post Settings hinterlegt."
 			)
 		)
 
 	voucher_layout = _voucher_layout_api(settings)
 	position = {
 		"positionType": "AppShoppingCartPDFPosition",
-		"productCode": _product_code(doc, settings),
+		"productCode": product_code(doc, settings),
 		"voucherLayout": voucher_layout,
 		"position": dict(C.DEFAULT_VOUCHER_POSITION),
 	}

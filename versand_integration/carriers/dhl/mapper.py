@@ -32,8 +32,11 @@ def to_alpha3(country: str | None) -> str:
 		return country.upper()
 	code = country.upper()
 	if len(country) != 2:
-		# Country-Name -> alpha-2 aus ERPNext
-		code = (frappe.db.get_value("Country", country, "code") or "").upper()
+		# Häufige von Hand eingetragene deutsche Ländernamen zuerst, dann
+		# Country-Name -> alpha-2 aus ERPNext.
+		code = C.COUNTRY_NAME_ALIASES.get(country.upper()) or (
+			frappe.db.get_value("Country", country, "code") or ""
+		).upper()
 	alpha3 = C.ALPHA2_TO_ALPHA3.get(code)
 	if not alpha3:
 		raise CarrierConfigError(

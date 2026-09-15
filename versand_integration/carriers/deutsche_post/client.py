@@ -150,6 +150,10 @@ class DPClient:
 			"POST", C.SHOPPING_CART_PDF_PATH, json_body=body, params={"directCheckout": "true"}
 		)
 
+	def get_catalog(self, types: list[str]) -> dict:
+		"""GET /app/catalog?types=... – Motiv-/Seitenformat-/Vertragsprodukt-Katalog."""
+		return self._request("GET", C.CATALOG_PATH, params={"types": types})
+
 	def request_retoure(self, body: dict) -> dict:
 		"""POST /app/retoure – Erstattung nicht genutzter Marken beantragen."""
 		return self._request("POST", C.RETOURE_PATH, json_body=body)

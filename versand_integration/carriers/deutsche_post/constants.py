@@ -37,7 +37,9 @@ CATALOG_TYPE_PUBLIC = "PUBLIC"
 CATALOG_TYPE_PAGE_FORMATS = "PAGE_FORMATS"
 
 # Häufige Produktcodes (Briefe). Verbindlich ist die von der API selbst
-# gelieferte Produktliste (GET /app/catalog) – hier nur als Voreinstellung/Hinweis.
+# gelieferte Produktliste (GET /app/catalog) – hier die stabilen Standard-
+# Brief-Produkte als lesbare Auswahl (Code <-> Klartext), analog zu
+# carriers/dhl/constants.py und carriers/dpd/constants.py.
 COMMON_PRODUCTS = {
 	"1": "Standardbrief",
 	"21": "Kompaktbrief",
@@ -46,6 +48,28 @@ COMMON_PRODUCTS = {
 	"79": "Postkarte",
 }
 DEFAULT_PRODUCT_CODE = "1"
+
+PRODUCT_LABELS = list(COMMON_PRODUCTS.values())
+_PRODUCT_LABEL_TO_CODE = {label: code for code, label in COMMON_PRODUCTS.items()}
+
+
+def resolve_product(value: str | None) -> str | None:
+	"""Nimmt Klartext-Label ODER Rohcode entgegen, liefert immer den Rohcode."""
+	if not value:
+		return None
+	value = value.strip()
+	if value in COMMON_PRODUCTS:  # bereits ein Code
+		return value
+	if value in _PRODUCT_LABEL_TO_CODE:  # lesbarer Name
+		return _PRODUCT_LABEL_TO_CODE[value]
+	from versand_integration.carriers.exceptions import CarrierConfigError
+
+	raise CarrierConfigError(f"Internetmarke: unbekanntes Produkt '{value}'.")
+
+
+def product_label(code: str | None) -> str:
+	return COMMON_PRODUCTS.get(code or "", code or "")
+
 
 DEFAULT_PAGE_FORMAT_ID = 1
 
