@@ -11,19 +11,21 @@ frappe.ui.form.on("Deutsche Post Settings", {
 				}
 			});
 		});
-		frm.add_custom_button(__("Seitenformate aktualisieren"), () => {
+		frm.add_custom_button(__("Katalog aktualisieren"), () => {
 			frm.call({
 				doc: frm.doc,
-				method: "refresh_page_formats",
+				method: "refresh_catalog",
 				freeze: true,
-				freeze_message: __("Lade Seitenformate von der Internetmarke-API …"),
+				freeze_message: __("Lade Produkte/Seitenformate/Motive von der Internetmarke-API …"),
 			}).then((r) => {
+				const m = r.message || {};
 				frappe.msgprint({
-					title: __("Seitenformate aktualisiert"),
+					title: __("Katalog aktualisiert"),
 					indicator: "green",
-					message: __("{0} Seitenformate gespeichert ('Deutsche Post Seitenformat').", [
-						(r.message && r.message.count) || 0,
-					]),
+					message: __(
+						"{0} Produkte, {1} Seitenformate, {2} Motive gespeichert. Nicht Gewünschtes kann dort jeweils über 'Deaktiviert' ausgeblendet werden.",
+						[m.products || 0, m.page_formats || 0, m.motifs || 0]
+					),
 				});
 			});
 		});

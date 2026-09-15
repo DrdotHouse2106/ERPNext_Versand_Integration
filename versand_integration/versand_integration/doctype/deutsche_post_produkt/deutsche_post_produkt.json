@@ -1,0 +1,38 @@
+{
+ "actions": [],
+ "creation": "2026-09-16 12:00:00",
+ "description": "Produkte, die über dein Internetmarke-Konto tatsächlich bestellbar sind – Spiegelbild von GET /app/catalog (contractProducts). Über 'Katalog aktualisieren' in den Deutsche Post Settings befüllen; danach hier per 'Deaktiviert' ausblenden, was du nicht anbieten willst. Die Bezeichnung kommt nicht von der API (nur Code+Preis) und darf frei umbenannt werden.",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "price_cent",
+  "column_break_dpp",
+  "disabled"
+ ],
+ "fields": [
+  {"fieldname": "title", "fieldtype": "Data", "label": "Bezeichnung", "reqd": 1, "in_list_view": 1, "description": "Frei änderbar – die API liefert nur Produktcode + Preis, keinen Namen."},
+  {"fieldname": "price_cent", "fieldtype": "Int", "label": "Preis (Cent, zuletzt bekannt)", "read_only": 1, "in_list_view": 1, "description": "Nur zur Orientierung – der tatsächliche Frankierbetrag wird beim Erstellen des Etiketts live neu abgefragt."},
+  {"fieldname": "column_break_dpp", "fieldtype": "Column Break"},
+  {"fieldname": "disabled", "fieldtype": "Check", "label": "Deaktiviert", "in_list_view": 1, "description": "Deaktivierte Produkte stehen bei der Versandsendung nicht mehr zur Auswahl."}
+ ],
+ "in_create": 1,
+ "links": [],
+ "modified": "2026-09-16 12:00:00",
+ "modified_by": "Administrator",
+ "module": "Versand Integration",
+ "name": "Deutsche Post Produkt",
+ "owner": "Administrator",
+ "permissions": [
+  {"create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "role": "System Manager", "share": 1, "write": 1},
+  {"create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "role": "Stock Manager", "share": 1, "write": 1},
+  {"read": 1, "role": "Stock User"}
+ ],
+ "show_title_field_in_link": 1,
+ "sort_field": "title",
+ "sort_order": "ASC",
+ "states": [],
+ "title_field": "title",
+ "track_changes": 0
+}

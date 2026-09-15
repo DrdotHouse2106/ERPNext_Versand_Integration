@@ -54,6 +54,9 @@ class DeutschePostCarrier(BaseCarrier):
 	"""
 
 	name = "Deutsche Post"
+	# Internetmarke-Standardbriefe haben grundsätzlich kein Tracking (nur
+	# bestimmte Einschreiben-Varianten, die hier nicht abgebildet sind).
+	supports_tracking = False
 
 	def create_label(self, shipment) -> LabelResult:
 		settings = get_dp_settings()

@@ -58,13 +58,13 @@ def receiver_address(doc) -> dict:
 
 
 def product_code(doc, settings) -> int:
-	"""Löst Klartext-Auswahl (Select) ODER Rohcode zu einem int-Produktcode auf."""
+	"""`dp_product_code`/`default_product_code` sind Link-Felder auf 'Deutsche
+	Post Produkt', deren Name direkt der numerische Produktcode ist."""
 	raw = getattr(doc, "dp_product_code", None) or settings.default_product_code or C.DEFAULT_PRODUCT_CODE
-	code = C.resolve_product(raw) or raw
 	try:
-		return int(code)
+		return int(raw)
 	except ValueError as exc:
-		raise CarrierConfigError(_("Internetmarke: Produktcode '{0}' ist keine Zahl.").format(code)) from exc
+		raise CarrierConfigError(_("Internetmarke: Produktcode '{0}' ist keine Zahl.").format(raw)) from exc
 
 
 def _voucher_layout_api(settings) -> str:
