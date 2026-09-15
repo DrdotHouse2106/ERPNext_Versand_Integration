@@ -204,8 +204,10 @@ bei einem Fehler dort weitermachen, wo er auftrat:
 10. Job manuell antriggern statt eine Stunde zu warten:
     `bench --site <site> execute versand_integration.tracking.poll_open_shipments`
 11. **Deutsche Post**: erst „Verbindung testen" (Token-Austausch + Portokasse-Guthaben),
-    dann eine Versandsendung im Modus **Vorschau** anlegen (kostenlos) und erst danach,
-    mit bewusst gesetztem Frankierbetrag, im Modus **Produktiv** (siehe oben).
+    dann in den Settings „Seitenformate aktualisieren" (befüllt `Deutsche Post
+    Seitenformat`), dann eine Versandsendung im Modus **Vorschau** anlegen
+    (kostenlos) und erst danach, mit automatisch/bewusst gesetztem
+    Frankierbetrag, im Modus **Produktiv** (siehe oben).
 
 **Wenn etwas fehlschlägt:** Fehlermeldung/Traceback (Desk → *Error Log*, oder die
 Meldung aus dem `frappe.throw`) hierher kopieren – das genügt meist, um den Fehler
@@ -298,14 +300,30 @@ Bodies aus Versandsendung + Settings + Versandabsender):
 | Vorschau (kostenlos) | `?validate=true` | `AppShoppingCartPreviewPDFRequest` (nur Produktcode/Layout/Seitenformat, keine Adressen) | keine |
 | Produktiv | `?directCheckout=true` | `AppShoppingCartPDFRequest` (eine `AppShoppingCartPDFPosition`, bei Layout `ADDRESS_ZONE` inkl. Absender-/Empfängeradresse) | Portokasse wird um `total` (Cent) belastet |
 
-`total`/`Frankierbetrag` kommt aus `Versandsendung.dp_franking_cent`
-(Override) oder `Deutsche Post Settings.default_franking_cent` – **wird nicht
-geraten**, DHL liefert die Preisliste separat (PPL), der Wert muss eingetragen
-werden, sonst wirft `create_label` einen klaren Fehler statt eine falsche
-Belastung zu riskieren. Die Antwort (`link` zur PDF-Marke, `shoppingCart`
-mit `shopOrderId`/`voucherId`) wird als PDF heruntergeladen und an die
-Versandsendung angehängt; `shopOrderId`/`voucherId` bleiben im Feld
-`api_response` erhalten.
+**Produkt-Auswahl:** `Versandsendung.dp_product_code` (und der Fallback
+`Deutsche Post Settings.default_product_code`) sind Auswahlfelder mit
+Klartext-Namen (Standardbrief/Kompaktbrief/Großbrief/Maxibrief/Postkarte),
+`constants.resolve_product()`/`product_label()` übersetzen intern in den
+API-Produktcode – wie bei DHL/DPD nie rohe Zahlencodes von Hand eintragen.
+
+**Frankierbetrag (`total`):** Wird automatisch ermittelt – Priorität:
+1. `Versandsendung.dp_franking_cent` (expliziter Override), 2. Live-Preis aus
+`GET /app/catalog` (`contractProducts`) für den gewählten Produktcode,
+3. `Deutsche Post Settings.default_franking_cent` als Fallback. **Kein
+geratener Wert**: liefert keine der drei Quellen einen Betrag, wirft
+`create_label` einen klaren Fehler statt eine falsche Belastung zu riskieren.
+
+**Seitenformat:** Eigenes Doctype `Deutsche Post Seitenformat` spiegelt
+`GET /app/catalog?types=PAGE_FORMATS` (Button „Seitenformate aktualisieren"
+in den Settings) – `dp_page_format_id`/`default_page_format_id` sind
+Link-Felder darauf statt roher IDs. Für ein Format wie bei den normalen
+DHL/DPD-Versandlabels (z. B. DIN A6) ein Format vom Typ `LABELPRINTER`/
+`LABELPAGE` wählen, für A4-Ausdrucke `REGULARPAGE`/`ENVELOPE` – welche IDs
+das konkret sind, liefert nur die Live-Abfrage (kontospezifischer Katalog).
+
+Die Antwort (`link` zur PDF-Marke, `shoppingCart` mit `shopOrderId`/
+`voucherId`) wird als PDF heruntergeladen und an die Versandsendung
+angehängt; `shopOrderId`/`voucherId` bleiben im Feld `api_response` erhalten.
 
 **Storno/Retoure:** Beim Abbrechen einer submitted Versandsendung
 (`on_cancel`) wird – falls `api_response` eine `shopOrderId` + Voucher

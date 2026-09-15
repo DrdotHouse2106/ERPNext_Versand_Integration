@@ -1,0 +1,42 @@
+{
+ "actions": [],
+ "creation": "2026-09-15 12:00:00",
+ "description": "Seitenformate für Internetmarke-Marken – Spiegelbild von GET /app/catalog?types=PAGE_FORMATS. Über 'Seitenformate aktualisieren' in den Deutsche Post Settings befüllen/aktualisieren, nicht von Hand anlegen.",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "page_type",
+  "column_break_pt",
+  "is_address_possible",
+  "is_image_possible",
+  "description"
+ ],
+ "fields": [
+  {"fieldname": "title", "fieldtype": "Data", "label": "Bezeichnung", "read_only": 1, "in_list_view": 1},
+  {"fieldname": "page_type", "fieldtype": "Select", "label": "Typ", "options": "REGULARPAGE\nENVELOPE\nLABELPRINTER\nLABELPAGE", "read_only": 1, "in_list_view": 1, "description": "LABELPRINTER/LABELPAGE = Etikettenformat (z. B. thermodruckähnlich wie bei DHL/DPD-Versandlabels), REGULARPAGE/ENVELOPE = A4-Papier/Umschlag."},
+  {"fieldname": "column_break_pt", "fieldtype": "Column Break"},
+  {"fieldname": "is_address_possible", "fieldtype": "Check", "label": "Adresse druckbar", "read_only": 1},
+  {"fieldname": "is_image_possible", "fieldtype": "Check", "label": "Motiv druckbar", "read_only": 1},
+  {"fieldname": "description", "fieldtype": "Small Text", "label": "Beschreibung", "read_only": 1}
+ ],
+ "in_create": 1,
+ "links": [],
+ "modified": "2026-09-15 12:00:00",
+ "modified_by": "Administrator",
+ "module": "Versand Integration",
+ "name": "Deutsche Post Seitenformat",
+ "owner": "Administrator",
+ "permissions": [
+  {"create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "role": "System Manager", "share": 1, "write": 1},
+  {"create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "role": "Stock Manager", "share": 1, "write": 1},
+  {"read": 1, "role": "Stock User"}
+ ],
+ "show_title_field_in_link": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "title",
+ "track_changes": 0
+}
