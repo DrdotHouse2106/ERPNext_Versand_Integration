@@ -34,7 +34,7 @@
   "sender_country"
  ],
  "fields": [
-  {"fieldname": "beta_html", "fieldtype": "HTML", "options": "<div class=\"alert alert-warning\">Internetmarke läuft jetzt über die neue REST-API im DHL Developer Portal (kein Partnervertrag mehr nötig – einfach im selben Developer-Portal-App die API <b>\"Post DE Internetmarke\"</b> hinzufügen). Auth (Client ID + Client Secret + Portokasse-Login → Bearer-Token) ist <b>live bestätigt</b> und über \"Verbindung testen\" prüfbar. Die eigentliche <b>Marken-Erstellung fehlt noch</b> – es gibt dafür noch keine verifizierte API-Referenz für Warenkorb/Checkout.</div>"},
+  {"fieldname": "beta_html", "fieldtype": "HTML", "options": "<div class=\"alert alert-info\">Internetmarke läuft über die neue REST-API im DHL Developer Portal (kein Partnervertrag mehr nötig – im selben Developer-Portal-App die API <b>\"Post DE Internetmarke\"</b> hinzufügen). Auth und Marken-Erstellung sind gegen die offizielle API-Referenz implementiert und <b>live bestätigt</b>. Im Modus <b>Vorschau</b> wird eine kostenlose Muster-Marke geholt (kein Portokasse-Abzug), im Modus <b>Produktiv</b> eine echte Marke gekauft (Frankierbetrag unten hinterlegen). Retoure (Erstattung nicht genutzter Marken) läuft beim Stornieren der Versandsendung automatisch mit.</div>"},
   {"fieldname": "mode", "fieldtype": "Select", "label": "Modus", "options": "Vorschau (kostenlos)\nProduktiv (Portokasse wird belastet)", "default": "Vorschau (kostenlos)", "reqd": 1, "description": "Vorschau: kostenlos, Muster-PDF ohne gültige Frankierung. Produktiv: echte Marke, Portokasse-Abzug. (Beide Modi warten noch auf die Marken-Erstellungs-Implementierung.)"},
   {"fieldname": "section_zugang", "fieldtype": "Section Break", "label": "Zugang (Developer Portal)"},
   {"fieldname": "client_id", "fieldtype": "Password", "label": "Client ID / Consumer Key", "description": "developer.dhl.com → deine App → API \"Post DE Internetmarke\" hinzufügen. Derselbe Wert wie der API Key in den DHL Settings, da eine gemeinsame App für alle DHL-/Post-APIs genutzt wird."},
@@ -60,7 +60,7 @@
   {"fieldname": "column_break_absender", "fieldtype": "Column Break"},
   {"fieldname": "sender_zip", "fieldtype": "Data", "label": "PLZ"},
   {"fieldname": "sender_city", "fieldtype": "Data", "label": "Ort"},
-  {"fieldname": "sender_country", "fieldtype": "Data", "label": "Land", "default": "Deutschland"}
+  {"fieldname": "sender_country", "fieldtype": "Data", "label": "Land", "default": "DE", "description": "ISO-Ländercode (z. B. DE) oder exakter ERPNext-Ländername."}
  ],
  "issingle": 1,
  "links": [],
