@@ -68,6 +68,10 @@ class BaseCarrier(abc.ABC):
 	"""Schnittstelle, die jeder Carrier (DHL, DPD, Deutsche Post …) implementiert."""
 
 	name: str = "base"
+	# Manche Carrier/Produkte bieten grundsätzlich kein Tracking (z. B. Deutsche
+	# Post Standardbrief) - dann lohnt es nicht, "Automatisch weiter verfolgen"
+	# aktiv zu lassen. Auf False setzen statt track() ungenutzt raisen zu lassen.
+	supports_tracking: bool = True
 
 	@abc.abstractmethod
 	def create_label(self, shipment) -> LabelResult:

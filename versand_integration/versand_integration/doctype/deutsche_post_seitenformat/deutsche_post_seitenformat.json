@@ -1,7 +1,7 @@
 {
  "actions": [],
  "creation": "2026-09-15 12:00:00",
- "description": "Seitenformate für Internetmarke-Marken – Spiegelbild von GET /app/catalog?types=PAGE_FORMATS. Über 'Seitenformate aktualisieren' in den Deutsche Post Settings befüllen/aktualisieren, nicht von Hand anlegen.",
+ "description": "Seitenformate für Internetmarke-Marken – Spiegelbild von GET /app/catalog?types=PAGE_FORMATS. Über 'Katalog aktualisieren' in den Deutsche Post Settings befüllen/aktualisieren, nicht von Hand anlegen. Beim ersten Import werden REGULARPAGE/ENVELOPE (A4-Papier/Umschlag) automatisch deaktiviert, LABELPRINTER/LABELPAGE (Etikettenformate) aktiv gelassen – bei Bedarf unten anpassen.",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
@@ -11,6 +11,7 @@
   "column_break_pt",
   "is_address_possible",
   "is_image_possible",
+  "disabled",
   "description"
  ],
  "fields": [
@@ -19,6 +20,7 @@
   {"fieldname": "column_break_pt", "fieldtype": "Column Break"},
   {"fieldname": "is_address_possible", "fieldtype": "Check", "label": "Adresse druckbar", "read_only": 1},
   {"fieldname": "is_image_possible", "fieldtype": "Check", "label": "Motiv druckbar", "read_only": 1},
+  {"fieldname": "disabled", "fieldtype": "Check", "label": "Deaktiviert", "in_list_view": 1, "description": "Deaktivierte Formate stehen bei der Auswahl nicht mehr zur Verfügung."},
   {"fieldname": "description", "fieldtype": "Small Text", "label": "Beschreibung", "read_only": 1}
  ],
  "in_create": 1,

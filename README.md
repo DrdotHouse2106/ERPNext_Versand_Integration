@@ -94,7 +94,13 @@ Nach dem Etikett läuft der Status automatisch nach:
 
 Konfiguration: **Versand Integration Settings**. Quellen:
 DHL = „Parcel DE Tracking"-API (nur API-Key), DPD = öffentlicher
-tracking.dpd.de-Endpunkt (best effort), Deutsche Post = kein Tracking für Briefe.
+tracking.dpd.de-Endpunkt (best effort), Deutsche Post = kein Tracking für Briefe
+(nur bestimmte Einschreiben-Varianten hätten überhaupt eine Sendungsnummer mit
+Tracking, die hier nicht abgebildet sind). Der Hintergrund-Job fragt ohnehin
+nur `carrier in [DHL, DPD]` ab; zusätzlich wird bei Deutsche-Post-Sendungen
+„Automatisch weiter verfolgen" direkt beim Erstellen deaktiviert (statt es
+für immer aktiv, aber wirkungslos stehen zu lassen) – über
+`BaseCarrier.supports_tracking` (`False` bei `DeutschePostCarrier`).
 
 ---
 
@@ -204,8 +210,8 @@ bei einem Fehler dort weitermachen, wo er auftrat:
 10. Job manuell antriggern statt eine Stunde zu warten:
     `bench --site <site> execute versand_integration.tracking.poll_open_shipments`
 11. **Deutsche Post**: erst „Verbindung testen" (Token-Austausch + Portokasse-Guthaben),
-    dann in den Settings „Seitenformate aktualisieren" (befüllt `Deutsche Post
-    Seitenformat`), dann eine Versandsendung im Modus **Vorschau** anlegen
+    dann in den Settings „Katalog aktualisieren" (befüllt Produkte/Seitenformate/
+    Motive, siehe unten), dann eine Versandsendung im Modus **Vorschau** anlegen
     (kostenlos) und erst danach, mit automatisch/bewusst gesetztem
     Frankierbetrag, im Modus **Produktiv** (siehe oben).
 
@@ -300,11 +306,24 @@ Bodies aus Versandsendung + Settings + Versandabsender):
 | Vorschau (kostenlos) | `?validate=true` | `AppShoppingCartPreviewPDFRequest` (nur Produktcode/Layout/Seitenformat, keine Adressen) | keine |
 | Produktiv | `?directCheckout=true` | `AppShoppingCartPDFRequest` (eine `AppShoppingCartPDFPosition`, bei Layout `ADDRESS_ZONE` inkl. Absender-/Empfängeradresse) | Portokasse wird um `total` (Cent) belastet |
 
-**Produkt-Auswahl:** `Versandsendung.dp_product_code` (und der Fallback
-`Deutsche Post Settings.default_product_code`) sind Auswahlfelder mit
-Klartext-Namen (Standardbrief/Kompaktbrief/Großbrief/Maxibrief/Postkarte),
-`constants.resolve_product()`/`product_label()` übersetzen intern in den
-API-Produktcode – wie bei DHL/DPD nie rohe Zahlencodes von Hand eintragen.
+**Katalog statt roher IDs:** Ein Button „Katalog aktualisieren" in den
+Deutsche Post Settings ruft `GET /app/catalog` einmal ab (`catalog_sync.py`)
+und spiegelt das Ergebnis in drei eigene Doctypes, jeweils mit **Deaktiviert**-
+Schalter zum Kuratieren – Versandsendung/Settings verlinken nur noch darauf,
+nie mehr rohe Codes/IDs von Hand:
+
+| Doctype | Quelle | Inhalt |
+| --- | --- | --- |
+| `Deutsche Post Produkt` | `contractProducts.products` | tatsächlich über dein Konto bestellbare Produkte (Code + zuletzt bekannter Preis). Die API liefert keinen Namen dazu – Vorbelegung aus `constants.COMMON_PRODUCTS`, frei umbenennbar. Nur was hier aktiv ist, steht an der Versandsendung zur Auswahl. |
+| `Deutsche Post Seitenformat` | `pageFormats` | Druck-/Etikettenformate. Beim ersten Import werden `REGULARPAGE`/`ENVELOPE` (A4/Umschlag) automatisch deaktiviert, `LABELPRINTER`/`LABELPAGE` (Etikettenformate wie bei DHL/DPD, z. B. DIN A6) bleiben aktiv. |
+| `Deutsche Post Motiv` | `publicCatalog.items[].images[]` | die **Motiv-ID** – das rein dekorative Bild neben der Frankierung (Jahreszeiten-/Anlass-/Firmenmotive o. Ä.), hat keinen Einfluss auf Preis oder Produkt, komplett optional. |
+
+`Versandsendung.dp_product_code`/`dp_page_format_id` und die Settings-
+Fallbacks `default_product_code`/`default_page_format_id`/`image_id`/
+`preview_image_id` sind Link-Felder auf diese drei Doctypes (gefiltert auf
+nicht-deaktivierte Einträge). Wiederholtes „Katalog aktualisieren" holt
+aktuelle Preise/Formate nach, ohne eigene Umbenennungen oder den
+Deaktiviert-Schalter zu überschreiben.
 
 **Frankierbetrag (`total`):** Wird automatisch ermittelt – Priorität:
 1. `Versandsendung.dp_franking_cent` (expliziter Override), 2. Live-Preis aus
@@ -312,14 +331,6 @@ API-Produktcode – wie bei DHL/DPD nie rohe Zahlencodes von Hand eintragen.
 3. `Deutsche Post Settings.default_franking_cent` als Fallback. **Kein
 geratener Wert**: liefert keine der drei Quellen einen Betrag, wirft
 `create_label` einen klaren Fehler statt eine falsche Belastung zu riskieren.
-
-**Seitenformat:** Eigenes Doctype `Deutsche Post Seitenformat` spiegelt
-`GET /app/catalog?types=PAGE_FORMATS` (Button „Seitenformate aktualisieren"
-in den Settings) – `dp_page_format_id`/`default_page_format_id` sind
-Link-Felder darauf statt roher IDs. Für ein Format wie bei den normalen
-DHL/DPD-Versandlabels (z. B. DIN A6) ein Format vom Typ `LABELPRINTER`/
-`LABELPAGE` wählen, für A4-Ausdrucke `REGULARPAGE`/`ENVELOPE` – welche IDs
-das konkret sind, liefert nur die Live-Abfrage (kontospezifischer Katalog).
 
 Die Antwort (`link` zur PDF-Marke, `shoppingCart` mit `shopOrderId`/
 `voucherId`) wird als PDF heruntergeladen und an die Versandsendung

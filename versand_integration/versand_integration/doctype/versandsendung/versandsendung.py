@@ -128,6 +128,9 @@ class Versandsendung(Document):
 			frappe.throw(self.error_message, title=_("Etikett fehlgeschlagen"))
 
 		self._apply_label_result(result)
+		if not carrier.supports_tracking:
+			self.tracking_polling_active = 0
+			self.tracking_status_text = _("Für dieses Produkt gibt es keine Sendungsverfolgung.")
 		self.save()
 
 		if self._auto_submit_enabled():
@@ -212,6 +215,14 @@ class Versandsendung(Document):
 		try:
 			result: TrackingResult = get_carrier(self.carrier).track(self)
 		except TrackingNotSupported:
+			if self.tracking_polling_active:
+				# Selbstheilung fuer Sendungen, die vor diesem Fix erstellt wurden.
+				self.tracking_polling_active = 0
+				self.tracking_status_text = _("Für dieses Produkt gibt es keine Sendungsverfolgung.")
+				self.flags.ignore_validate = True
+				self.save(ignore_permissions=True)
+				if commit:
+					frappe.db.commit()
 			frappe.msgprint(_("Für {0} gibt es keine Sendungsverfolgung.").format(self.carrier))
 			return {"status": self.tracking_status}
 		except CarrierError as exc:

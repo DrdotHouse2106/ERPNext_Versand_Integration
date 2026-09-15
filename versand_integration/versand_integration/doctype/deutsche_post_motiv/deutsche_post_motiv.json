@@ -1,0 +1,40 @@
+{
+ "actions": [],
+ "creation": "2026-09-16 12:00:00",
+ "description": "Motive (imageID) = das dekorative Bild links neben der eigentlichen Frankierung auf der Internetmarke (z. B. Jahreszeiten-, Anlass- oder Firmenmotive) – hat nichts mit dem Porto/Preis zu tun, ist reine Optik. Spiegelbild von GET /app/catalog (publicCatalog). Über 'Katalog aktualisieren' in den Deutsche Post Settings befüllen.",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "category",
+  "column_break_dpm",
+  "slogan",
+  "disabled"
+ ],
+ "fields": [
+  {"fieldname": "title", "fieldtype": "Data", "label": "Bezeichnung", "read_only": 1, "in_list_view": 1},
+  {"fieldname": "category", "fieldtype": "Data", "label": "Kategorie", "read_only": 1, "in_list_view": 1},
+  {"fieldname": "column_break_dpm", "fieldtype": "Column Break"},
+  {"fieldname": "slogan", "fieldtype": "Data", "label": "Slogan", "read_only": 1},
+  {"fieldname": "disabled", "fieldtype": "Check", "label": "Deaktiviert", "in_list_view": 1, "description": "Deaktivierte Motive stehen bei der Auswahl nicht mehr zur Verfügung."}
+ ],
+ "in_create": 1,
+ "links": [],
+ "modified": "2026-09-16 12:00:00",
+ "modified_by": "Administrator",
+ "module": "Versand Integration",
+ "name": "Deutsche Post Motiv",
+ "owner": "Administrator",
+ "permissions": [
+  {"create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "role": "System Manager", "share": 1, "write": 1},
+  {"create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "role": "Stock Manager", "share": 1, "write": 1},
+  {"read": 1, "role": "Stock User"}
+ ],
+ "show_title_field_in_link": 1,
+ "sort_field": "title",
+ "sort_order": "ASC",
+ "states": [],
+ "title_field": "title",
+ "track_changes": 0
+}
