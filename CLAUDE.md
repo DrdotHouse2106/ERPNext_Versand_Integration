@@ -129,6 +129,20 @@ submitted → `on_cancel()` calls `carrier.cancel_label()`. Carrier-specific
 Settings lookups (auto_submit, validate_only) go through
 `_carrier_settings()`/`_SETTINGS_DOCTYPE`, not a hardcoded DHL reference.
 
+`create_label()`/`refresh_tracking()` are whitelisted Document methods, so
+being callable via `frm.call({doc, method})` only implies read access —
+both start with `self.check_permission("write")` since they trigger real
+carrier side effects (a shipment order, an Internetmarke purchase).
+`create_label()` also re-reads `status`/`shipment_number` via
+`frappe.db.get_value(..., for_update=True)` right before calling the
+carrier, to close the double-submit race (two tabs/a double-click both
+seeing "Entwurf" and both buying a label). Don't remove either without
+replacing them with an equivalent guard — see the security-review commit
+(`d7df652`) for the reasoning. `api.create_shipment_from_delivery_note`
+relies on `create_label()`'s own check for the "existing Versandsendung"
+path, and does its own `frappe.has_permission(..., "create")` check for the
+"new Versandsendung" path.
+
 Tracking fields (`tracking_status`, `tracking_events` child table, etc.) are
 all `allow_on_submit: 1` in the DocType JSON, and `refresh_tracking()` sets
 `self.flags.ignore_validate = True` before `save()` — this is what lets a
