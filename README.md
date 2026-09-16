@@ -404,6 +404,13 @@ die `LabelResult` zurückgibt, plus Eintrag in `registry.py` und ein Settings-Do
   Downloads sind auf `https://*.deutschepost.de` mit Größenlimit begrenzt.
 * `Versandsendung.api_request`/`api_response` (enthalten Empfängeradressen
   im Klartext) sind `permlevel: 1` – nur System-/Stock Manager sehen sie.
+* **Rollenmodell (bewusst so belassen, bitte selbst bewerten):** die Rolle
+  `Stock User` darf Versandsendungen anlegen, buchen und Etiketten
+  erstellen – im Produktiv-Modus von Deutsche Post also auch echte
+  Portokasse-Beträge auslösen. Wer das enger fassen will, entzieht der
+  Rolle in den DocType-Berechtigungen von `Versandsendung` `create`/
+  `write`/`submit` und vergibt stattdessen eine eigene Rolle (z. B.
+  „Versand Manager").
 
 ## Unterstützung
 
