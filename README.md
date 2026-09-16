@@ -391,7 +391,19 @@ die `LabelResult` zurückgibt, plus Eintrag in `registry.py` und ein Settings-Do
 * Zugangsdaten liegen als `Password`-Felder verschlüsselt in der DB.
 * `.secrets/` ist per `.gitignore` ausgeschlossen – **niemals** echte Keys committen.
 * Alle API-Aufrufe laufen server-seitig; die whitelisted-Methoden prüfen
-  `Delivery Note`-Leserechte.
+  Lese-/Schreibrechte auf `Delivery Note`/`Versandsendung`, bevor ein
+  Carrier-Auftrag (Etikettenkauf) ausgelöst wird.
+* `create_label()` sperrt die Sendungszeile (`for_update`) und prüft den
+  Status frisch aus der DB, um doppelte Carrier-Aufträge durch parallele
+  Aufrufe (Doppelklick, zwei Tabs) zu verhindern.
+* Text aus Carrier-Antworten (Fehlermeldungen, Tracking-Status) wird vor
+  der Anzeige in Dialogen/Benachrichtigungen escaped (`frappe.utils.escape_html`).
+* Die frei editierbare `api_base_url` (Deutsche Post Settings) ist auf
+  `https://*.dhl.com` beschränkt, damit Client Secret/Portokasse-Passwort
+  nicht versehentlich an einen fremden Host geschickt werden; Marken-PDF-
+  Downloads sind auf `https://*.deutschepost.de` mit Größenlimit begrenzt.
+* `Versandsendung.api_request`/`api_response` (enthalten Empfängeradressen
+  im Klartext) sind `permlevel: 1` – nur System-/Stock Manager sehen sie.
 
 ## Unterstützung
 

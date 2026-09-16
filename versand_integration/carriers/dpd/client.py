@@ -40,7 +40,11 @@ class DPDClient:
 	def _service(self, path: str):
 		zeep, Transport, Settings = _zeep()
 		transport = Transport(timeout=60, operation_timeout=60)
-		settings = Settings(strict=False, xml_huge_tree=True)
+		# xml_huge_tree bewusst NICHT gesetzt: lxml-Standardlimits (Schutz vor
+		# XML-Bomben/übergroßen Antworten) reichen für normale Label-Antworten
+		# mit einem eingebetteten Base64-PDF, es gab keinen dokumentierten Grund,
+		# sie hier abzuschalten.
+		settings = Settings(strict=False)
 		wsdl = f"{self.base}{path}?wsdl"
 		try:
 			return zeep.Client(wsdl=wsdl, transport=transport, settings=settings)

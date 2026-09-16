@@ -70,8 +70,12 @@ function choose_carrier_and_create(frm) {
 				callback: (r) => {
 					if (r.exc || !r.message) return;
 					const res = r.message;
+					// shipment_number kommt vom Carrier (roh) - vor dem HTML-Rendering escapen.
+					const shipment_number = res.shipment_number
+						? frappe.utils.escape_html(res.shipment_number)
+						: res.status;
 					frappe.show_alert({
-						message: __("Versandsendung {0} – {1}", [res.name, res.shipment_number || res.status]),
+						message: __("Versandsendung {0} – {1}", [res.name, shipment_number]),
 						indicator: res.status === "Etikett erstellt" ? "green" : "orange",
 					});
 					frm.reload_doc();

@@ -145,8 +145,8 @@
 
   {"fieldname": "section_api", "fieldtype": "Section Break", "label": "API-Protokoll", "collapsible": 1},
   {"fieldname": "error_message", "fieldtype": "Small Text", "label": "Fehlermeldung", "read_only": 1, "no_copy": 1},
-  {"fieldname": "api_request", "fieldtype": "Code", "label": "Request", "options": "JSON", "read_only": 1, "no_copy": 1},
-  {"fieldname": "api_response", "fieldtype": "Code", "label": "Response", "options": "JSON", "read_only": 1, "no_copy": 1},
+  {"fieldname": "api_request", "fieldtype": "Code", "label": "Request", "options": "JSON", "read_only": 1, "no_copy": 1, "permlevel": 1, "description": "Enthält u. a. Empfängeradresse im Klartext – nur für System-/Stock Manager sichtbar."},
+  {"fieldname": "api_response", "fieldtype": "Code", "label": "Response", "options": "JSON", "read_only": 1, "no_copy": 1, "permlevel": 1},
   {"fieldname": "amended_from", "fieldtype": "Link", "label": "Amended From", "options": "Versandsendung", "read_only": 1, "no_copy": 1, "print_hide": 1}
  ],
  "links": [],
@@ -158,7 +158,9 @@
  "permissions": [
   {"create": 1, "delete": 1, "email": 1, "print": 1, "read": 1, "report": 1, "role": "System Manager", "share": 1, "write": 1, "submit": 1, "cancel": 1, "amend": 1},
   {"create": 1, "delete": 1, "email": 1, "print": 1, "read": 1, "report": 1, "role": "Stock Manager", "share": 1, "write": 1, "submit": 1, "cancel": 1, "amend": 1},
-  {"create": 1, "email": 1, "print": 1, "read": 1, "report": 1, "role": "Stock User", "write": 1, "submit": 1, "cancel": 1, "amend": 1}
+  {"create": 1, "email": 1, "print": 1, "read": 1, "report": 1, "role": "Stock User", "write": 1, "submit": 1, "cancel": 1, "amend": 1},
+  {"permlevel": 1, "read": 1, "role": "System Manager", "write": 1},
+  {"permlevel": 1, "read": 1, "role": "Stock Manager", "write": 1}
  ],
  "sort_field": "modified",
  "sort_order": "DESC",

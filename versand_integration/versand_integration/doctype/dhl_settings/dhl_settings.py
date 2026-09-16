@@ -1,6 +1,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils import escape_html
 
 from versand_integration.carriers.exceptions import CarrierError
 
@@ -20,6 +21,6 @@ class DHLSettings(Document):
 			return DHLClient(self).test_connection()
 		except CarrierError as exc:
 			frappe.throw(
-				_("Verbindungstest fehlgeschlagen: {0}").format(str(exc)),
+				_("Verbindungstest fehlgeschlagen: {0}").format(escape_html(str(exc))),
 				title=_("DHL Verbindungstest"),
 			)

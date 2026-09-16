@@ -29,6 +29,8 @@ def create_shipment_from_delivery_note(
 	if existing:
 		doc = frappe.get_doc("Versandsendung", existing)
 	else:
+		if not frappe.has_permission("Versandsendung", "create"):
+			frappe.throw(_("Keine Berechtigung, Versandsendungen anzulegen."), frappe.PermissionError)
 		doc = frappe.new_doc("Versandsendung")
 		doc.delivery_note = delivery_note
 		doc.carrier = carrier or "DHL"
@@ -36,6 +38,9 @@ def create_shipment_from_delivery_note(
 			doc.versandabsender = versandabsender
 		doc.insert()
 
+	# doc.create_label() prueft selbst nochmal Schreibrecht (siehe
+	# Versandsendung.create_label) - wichtig, weil `doc` hier auch die bereits
+	# existierende Sendung eines anderen Nutzers sein kann.
 	if cint(create_label) and doc.status != "Etikett erstellt":
 		doc.create_label()
 
@@ -50,6 +55,9 @@ def create_shipment_from_delivery_note(
 
 @frappe.whitelist()
 def get_shipment_for_delivery_note(delivery_note: str):
+	if not frappe.has_permission("Delivery Note", "read", doc=delivery_note):
+		frappe.throw(_("Keine Berechtigung für diesen Lieferschein."), frappe.PermissionError)
+
 	name = frappe.db.get_value(
 		"Versandsendung",
 		{"delivery_note": delivery_note, "docstatus": ["<", 2]},
