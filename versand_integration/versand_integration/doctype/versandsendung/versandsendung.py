@@ -112,18 +112,22 @@ class Versandsendung(Document):
 		if self.docstatus != 0:
 			frappe.throw(_("Etiketten können nur im Entwurf erstellt werden."))
 
-		# Zeile bis zum Ende dieser Transaktion sperren und den Status frisch aus
-		# der DB lesen - verhindert, dass zwei parallele Aufrufe (Doppelklick,
-		# zwei Tabs) beide einen Carrier-Auftrag ausloesen (doppeltes Etikett /
-		# doppelte Portokasse-Abbuchung), weil beide noch den alten "Entwurf"-
-		# Status im Speicher sehen.
-		current_status, current_shipment_number = frappe.db.get_value(
-			self.doctype, self.name, ["status", "shipment_number"], for_update=True
-		)
-		if current_status == STATUS_CREATED and current_shipment_number:
-			frappe.throw(_("Für diese Sendung existiert bereits ein Etikett ({0}).").format(
-				current_shipment_number
-			))
+		if not self.is_new():
+			# Zeile bis zum Ende dieser Transaktion sperren und den Status frisch
+			# aus der DB lesen - verhindert, dass zwei parallele Aufrufe (Doppel-
+			# klick, zwei Tabs) auf eine bereits gespeicherte Sendung beide einen
+			# Carrier-Auftrag ausloesen (doppeltes Etikett / doppelte Portokasse-
+			# Abbuchung), weil beide noch den alten "Entwurf"-Status im Speicher
+			# sehen. Für eine noch nicht gespeicherte Sendung (is_new()) gibt es
+			# noch keine DB-Zeile zu sperren - dieser Fall wird unten beim ersten
+			# self.save() als normaler Insert behandelt.
+			current_status, current_shipment_number = frappe.db.get_value(
+				self.doctype, self.name, ["status", "shipment_number"], for_update=True
+			)
+			if current_status == STATUS_CREATED and current_shipment_number:
+				frappe.throw(_("Für diese Sendung existiert bereits ein Etikett ({0}).").format(
+					current_shipment_number
+				))
 
 		carrier = get_carrier(self.carrier)
 		try:
