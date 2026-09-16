@@ -7,7 +7,7 @@ ohne Drittanbieter-Middleware.
 | --- | --- | --- |
 | **DHL** | Parcel DE Shipping v2 (REST, OAuth2/Basic) | ✅ live verifiziert: Etikett erstellen + stornieren |
 | **DPD** | DE WebConnect (SOAP: LoginService V2.0 + ShipmentService V4.5, via `zeep`) | Login + Sendung erstellen live verifiziert; Label-Extraktion gefixt, Re-Test nach nächstem Deploy ausstehend |
-| **Deutsche Post** | Internetmarke – neue REST-API „Post DE Internetmarke" (DHL Developer Portal, kein Partnervertrag mehr) | Auth + Marken-Erstellung (Vorschau/Produktiv) implementiert gegen offizielle API-Referenz, Token-Austausch live verifiziert; Marken-Erstellung selbst noch nicht live durchprobiert |
+| **Deutsche Post** | Internetmarke – neue REST-API „Post DE Internetmarke" (DHL Developer Portal, kein Partnervertrag mehr) | ✅ live verifiziert: Marken-Erstellung (Vorschau/Produktiv), Portokasse-Aufladung, optionale DATEV-Journalbuchungen |
 
 Geschrieben für **Frappe / ERPNext v15–v16**. Python-Abhängigkeit: `zeep` (SOAP, für DPD).
 
@@ -33,13 +33,13 @@ Test-Versandsendungen (kein Kunde/Lieferschein nötig, keine Spuren im System).
   (`splitByParcel`, dann `output` ist eine Liste statt eines Einzelobjekts; Commits
   `b38fc55`/`b8aed2e`) – **Re-Test nach dem nächsten Deploy steht noch aus**
 - `bench migrate`-Grundlagen: Custom Fields, Abrechnungsnummern-Tabelle, DocTypes korrekt angelegt
-- **Deutsche Post / Internetmarke**: Auth-Token-Austausch (`POST /user`) live verifiziert
-  (Bearer-Token + Portokasse-Guthaben abgerufen)
+- **Deutsche Post / Internetmarke**: Auth (`POST /user`) und Marken-Erstellung
+  (Vorschau + Produktiv, `POST /app/shoppingcart/pdf`) live verifiziert
 
 ⚠️ **Noch offen**
 - DPD-Label-Fix erneut testen (siehe oben)
-- Deutsche Post: Marken-Erstellung (Vorschau/Produktiv, `POST /app/shoppingcart/pdf`) gegen
-  die offizielle API-Referenz implementiert, aber noch nicht live durchprobiert
+- Deutsche Post: Portokasse-Aufladung + DATEV-Journalbuchungen implementiert,
+  aber noch nicht live durchprobiert (echtes Geld – bewusst nicht selbst getestet)
 - Mehrmarken-Auflösung (`Versandabsender`) mit mehr als einer Marke, automatischer Briefkopf
 - Sendungsverfolgung: Hintergrund-Job, Statusabgleich, Benachrichtigungen, Arbeitsfläche
   (Code ist deployt, aber noch nie live durchgeklickt)
@@ -347,11 +347,48 @@ die Erstattung der nicht genutzten Marke zu beantragen. Im Vorschau-Modus
 gibt's nichts zu erstatten (keine echte Marke gekauft), das wird erkannt
 und übersprungen.
 
-**Noch nicht getestet:** Die Marken-Erstellung selbst ist gegen die Spec
-implementiert, aber noch nicht live gegen die echte API durchprobiert (im
-Gegensatz zum Auth-Flow). Adressen: `postalCode` muss exakt 5-stellig sein
-(nur deutsche PLZ, wirft sonst einen klaren Fehler statt einen ungültigen
-Request zu schicken).
+✅ Marken-Erstellung live bestätigt (Vorschau + Produktiv). Adressen:
+`postalCode` muss exakt 5-stellig sein (nur deutsche PLZ, wirft sonst einen
+klaren Fehler statt einen ungültigen Request zu schicken).
+
+### Portokasse aufladen
+
+Button **„Portokasse aufladen"** in den Settings (`PUT /app/wallet?amount=
+<eurocent>`) – belastet **echtes Geld** über das in der Portokasse
+hinterlegte Zahlungsmittel (i. d. R. SEPA-Lastschrift, wird nicht hier,
+sondern in der Portokasse selbst festgelegt). Betrag wird im Dialog in Euro
+eingegeben, in Cent umgerechnet und vor dem Absenden per `frappe.confirm`
+noch einmal bestätigt. Antwort: `shopOrderId` + neues `walletBalance`.
+
+### Automatische Journalbuchungen (DATEV)
+
+Optional (`Journalbuchungen automatisch anlegen`, Checkbox in den Settings,
+Standard aus): bei jedem erfolgreichen **Produktiv**-Markenkauf und jeder
+Portokasse-Aufladung wird eine gebuchte ERPNext-`Journal Entry` angelegt –
+kein eigenes DATEV-Format, die bereits installierte DATEV-Exportapp
+(`erpnext_datev`) kann normale Journalbuchungen regulär exportieren.
+
+| Vorgang | Soll | Haben |
+| --- | --- | --- |
+| Markenkauf | Standardgegenkonto Porto | Buchungskonto (Portokasse) |
+| Aufladung | Buchungskonto (Portokasse) | Standardaufladekonto |
+
+Konfiguriert über `Deutsche Post Settings`: `Company`, `Buchungskonto`
+(bildet den Portokasse-Saldo ab), `Standardgegenkonto Porto`,
+`Standardaufladekonto` – alle als `Account`-Link-Felder. **Wichtig:** setzt
+voraus, dass die Portokasse **ausschließlich über diese App** genutzt wird;
+manuelle Aufladungen/Käufe direkt in der Portokasse-Weboberfläche werden
+nicht erkannt und verfälschen den Buchungskonto-Saldo. Schlägt eine
+Journalbuchung fehl (fehlende Konfiguration o. Ä.), wird die eigentliche
+Transaktion (Markenkauf/Aufladung) **trotzdem nicht rückgängig gemacht** –
+das Geld ist zu dem Zeitpunkt bereits geflossen, es gibt nur eine Warnung
+(Desk-Meldung + Error Log) statt eines harten Fehlers.
+
+Button **„Saldo abgleichen"** (nur sichtbar wenn aktiviert) vergleicht das
+echte Live-Guthaben aus der API mit dem Saldo des Buchungskontos in ERPNext
+(`erpnext.accounts.utils.get_balance_on`) und zeigt die Differenz an – so
+lässt sich erkennen, ob die "ausschließlich über die App"-Voraussetzung
+verletzt wurde oder eine Buchung fehlgeschlagen ist.
 
 Referenzmaterial (Spec-YAML, alte SOAP-Doku) liegt lokal in `Infos Porto/`
 (gitignored).
