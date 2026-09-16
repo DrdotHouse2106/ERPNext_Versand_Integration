@@ -42,6 +42,8 @@
   "column_break_datev",
   "datev_gegenkonto_porto",
   "datev_gegenkonto_aufladung",
+  "datev_opening_balance_cent",
+  "datev_opening_balance_booked",
   "section_diagnose",
   "last_catalog_response"
  ],
@@ -83,6 +85,8 @@
   {"fieldname": "column_break_datev", "fieldtype": "Column Break"},
   {"fieldname": "datev_gegenkonto_porto", "fieldtype": "Link", "options": "Account", "label": "Standardgegenkonto Porto", "depends_on": "eval:doc.datev_enabled", "mandatory_depends_on": "eval:doc.datev_enabled", "description": "Gegenkonto bei Markenkauf (Soll), z. B. Portokosten."},
   {"fieldname": "datev_gegenkonto_aufladung", "fieldtype": "Link", "options": "Account", "label": "Standardaufladekonto", "depends_on": "eval:doc.datev_enabled", "mandatory_depends_on": "eval:doc.datev_enabled", "description": "Gegenkonto bei Portokasse-Aufladung (Haben), z. B. Bank."},
+  {"fieldname": "datev_opening_balance_cent", "fieldtype": "Int", "label": "Anfangsguthaben Portokasse (Cent)", "depends_on": "eval:doc.datev_enabled && !doc.datev_opening_balance_booked", "description": "Guthaben, das schon vor der ersten Buchung über diese App in der Portokasse war (z. B. weil du sie vorher schon genutzt hast) – Betrag eintragen und unten auf 'Anfangsbestand buchen' klicken. Sonst stimmt das Buchungskonto nie mit dem echten Portokasse-Saldo überein."},
+  {"fieldname": "datev_opening_balance_booked", "fieldtype": "Check", "label": "Anfangsbestand bereits gebucht", "read_only": 1, "no_copy": 1, "depends_on": "eval:doc.datev_opening_balance_booked"},
   {"fieldname": "section_diagnose", "fieldtype": "Section Break", "label": "Diagnose", "collapsible": 1},
   {"fieldname": "last_catalog_response", "fieldtype": "Code", "options": "JSON", "label": "Letzte Katalog-Antwort (roh)", "read_only": 1, "no_copy": 1, "description": "Wird bei jedem 'Katalog aktualisieren' überschrieben – zur Fehlersuche, falls Produkte/Motive/Seitenformate leer bleiben."}
  ],

@@ -372,6 +372,7 @@ kein eigenes DATEV-Format, die bereits installierte DATEV-Exportapp
 | --- | --- | --- |
 | Markenkauf | Standardgegenkonto Porto | Buchungskonto (Portokasse) |
 | Aufladung | Buchungskonto (Portokasse) | Standardaufladekonto |
+| Anfangsguthaben (einmalig) | Buchungskonto (Portokasse) | Standardaufladekonto |
 
 Konfiguriert über `Deutsche Post Settings`: `Company`, `Buchungskonto`
 (bildet den Portokasse-Saldo ab), `Standardgegenkonto Porto`,
@@ -383,6 +384,13 @@ Journalbuchung fehl (fehlende Konfiguration o. Ä.), wird die eigentliche
 Transaktion (Markenkauf/Aufladung) **trotzdem nicht rückgängig gemacht** –
 das Geld ist zu dem Zeitpunkt bereits geflossen, es gibt nur eine Warnung
 (Desk-Meldung + Error Log) statt eines harten Fehlers.
+
+**Anfangsguthaben:** Wer die Portokasse schon vor der Aktivierung der
+Journalbuchungen genutzt hat, trägt den vorhandenen Betrag unter
+„Anfangsguthaben Portokasse (Cent)" ein und klickt „Anfangsbestand buchen"
+(nur einmal möglich, danach `datev_opening_balance_booked` gesetzt) – sonst
+zeigt „Saldo abgleichen" dauerhaft eine Differenz in Höhe dieses
+Altguthabens.
 
 Button **„Saldo abgleichen"** (nur sichtbar wenn aktiviert) vergleicht das
 echte Live-Guthaben aus der API mit dem Saldo des Buchungskontos in ERPNext

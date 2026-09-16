@@ -142,3 +142,24 @@ class DeutschePostSettings(Document):
 			"diff_cent": diff_cent,
 			"matches": abs(diff_cent) < 1,
 		}
+
+	@frappe.whitelist()
+	def book_opening_balance(self):
+		"""Bucht das in 'Anfangsguthaben Portokasse' eingetragene Guthaben
+		einmalig als Journalbuchung (Soll Buchungskonto / Haben Standard-
+		aufladekonto) – für ein Guthaben, das schon vor der ersten Buchung
+		über diese App vorhanden war. Läuft nur einmal: `datev_opening_
+		balance_booked` verhindert eine versehentliche Doppelbuchung."""
+		self.check_permission("write")
+		if cint(self.datev_opening_balance_booked):
+			frappe.throw(_("Anfangsbestand wurde bereits gebucht."))
+		amount_cent = cint(self.datev_opening_balance_cent)
+		if amount_cent < 1:
+			frappe.throw(_("Bitte zuerst ein Anfangsguthaben > 0 eintragen."))
+
+		from versand_integration.carriers.deutsche_post import accounting
+
+		journal_entry = accounting.book_opening_balance(self, amount_cent=amount_cent)
+
+		self.db_set("datev_opening_balance_booked", 1)
+		return {"ok": True, "journal_entry": journal_entry}
