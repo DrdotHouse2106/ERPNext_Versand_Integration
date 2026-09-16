@@ -32,9 +32,40 @@ frappe.ui.form.on("Deutsche Post Settings", {
 		frm.add_custom_button(__("Portokasse aufladen"), () => charge_wallet(frm), __("Portokasse"));
 		if (frm.doc.datev_enabled) {
 			frm.add_custom_button(__("Saldo abgleichen"), () => reconcile_balance(frm), __("Portokasse"));
+			if (!frm.doc.datev_opening_balance_booked && frm.doc.datev_opening_balance_cent) {
+				frm.add_custom_button(
+					__("Anfangsbestand buchen"),
+					() => book_opening_balance(frm),
+					__("Portokasse")
+				);
+			}
 		}
 	},
 });
+
+function book_opening_balance(frm) {
+	frappe.confirm(
+		__(
+			"Anfangsguthaben von {0} € einmalig als Journalbuchung erfassen? Das lässt sich danach nicht mehr über diesen Button wiederholen.",
+			[(frm.doc.datev_opening_balance_cent / 100).toFixed(2)]
+		),
+		() => {
+			frm.call({
+				doc: frm.doc,
+				method: "book_opening_balance",
+				freeze: true,
+			}).then((r) => {
+				const res = r.message || {};
+				frappe.msgprint({
+					title: __("Anfangsbestand gebucht"),
+					indicator: "green",
+					message: __("Journalbuchung {0} angelegt.", [res.journal_entry]),
+				});
+				frm.reload_doc();
+			});
+		}
+	);
+}
 
 function reconcile_balance(frm) {
 	frm.call({

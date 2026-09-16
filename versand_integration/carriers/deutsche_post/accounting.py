@@ -91,6 +91,30 @@ def book_purchase(settings, *, amount_cent: int, reference: str, gegenkonto: str
 		return {"ok": False, "warning": _("Journalbuchung fehlgeschlagen, siehe Error Log.")}
 
 
+def book_opening_balance(settings, *, amount_cent: int) -> str:
+	"""Einmalige Journalbuchung für ein Guthaben, das schon vor der ersten
+	Buchung über diese App in der Portokasse war. Anders als book_purchase()/
+	book_topup() ist hier noch keine externe Transaktion passiert (reine
+	interne Buchhaltungskorrektur) - wirft deshalb bei fehlender Konfiguration
+	ganz normal einen Fehler statt nur zu warnen. Das Aufrufen dieser Funktion
+	ein zweites Mal für dieselbe Settings-Instanz wird vom Aufrufer (siehe
+	deutsche_post_settings.py) über `datev_opening_balance_booked` verhindert."""
+	missing = _check_config(settings)
+	if not settings.datev_gegenkonto_aufladung:
+		missing.append("Standardaufladekonto")
+	if missing:
+		frappe.throw(
+			_("Buchhaltungs-Konfiguration unvollständig: {0}").format(", ".join(missing))
+		)
+	return _create_journal_entry(
+		company=settings.datev_company,
+		debit_account=settings.datev_buchungskonto,
+		credit_account=settings.datev_gegenkonto_aufladung,
+		amount_cent=amount_cent,
+		user_remark=_("Internetmarke Portokasse – Anfangsguthaben bei Aktivierung der Journalbuchungen"),
+	)
+
+
 def book_topup(settings, *, amount_cent: int, shop_order_id: str | None = None) -> dict:
 	"""Journalbuchung für eine erfolgreiche Portokasse-Aufladung. Gleiche
 	Fehlerlogik wie book_purchase(): die Aufladung selbst ist bereits
