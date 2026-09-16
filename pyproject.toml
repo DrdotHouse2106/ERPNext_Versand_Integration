@@ -13,7 +13,7 @@ readme = "README.md"
 dynamic = ["version"]
 dependencies = [
     # requests kommt aus dem Frappe-Stack.
-    "zeep>=4.2.1",  # SOAP-Client für DPD DE WebConnect (LoginService / ShipmentService)
+    "zeep>=4.2.1,<5",  # SOAP-Client für DPD DE WebConnect (LoginService / ShipmentService)
 ]
 
 [project.urls]

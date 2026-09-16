@@ -6,7 +6,7 @@ import json
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import cint, flt, get_url_to_form, now_datetime
+from frappe.utils import cint, escape_html, flt, get_url_to_form, now_datetime
 
 from versand_integration.carriers import base as cbase
 from versand_integration.carriers.base import LabelResult, TrackingNotSupported, TrackingResult
@@ -44,7 +44,7 @@ class Versandsendung(Document):
 				self._cancel_with_carrier()
 			except CarrierError as exc:
 				frappe.throw(
-					_("Sendung konnte beim Carrier nicht storniert werden: {0}").format(exc)
+					_("Sendung konnte beim Carrier nicht storniert werden: {0}").format(escape_html(str(exc)))
 				)
 		self.status = STATUS_CANCELLED
 		self._clear_delivery_note_backref()
@@ -108,11 +108,21 @@ class Versandsendung(Document):
 	# --------------------------------------------------------------- labels
 	@frappe.whitelist()
 	def create_label(self):
+		self.check_permission("write")
 		if self.docstatus != 0:
 			frappe.throw(_("Etiketten können nur im Entwurf erstellt werden."))
-		if self.status == STATUS_CREATED and self.shipment_number:
+
+		# Zeile bis zum Ende dieser Transaktion sperren und den Status frisch aus
+		# der DB lesen - verhindert, dass zwei parallele Aufrufe (Doppelklick,
+		# zwei Tabs) beide einen Carrier-Auftrag ausloesen (doppeltes Etikett /
+		# doppelte Portokasse-Abbuchung), weil beide noch den alten "Entwurf"-
+		# Status im Speicher sehen.
+		current_status, current_shipment_number = frappe.db.get_value(
+			self.doctype, self.name, ["status", "shipment_number"], for_update=True
+		)
+		if current_status == STATUS_CREATED and current_shipment_number:
 			frappe.throw(_("Für diese Sendung existiert bereits ein Etikett ({0}).").format(
-				self.shipment_number
+				current_shipment_number
 			))
 
 		carrier = get_carrier(self.carrier)
@@ -123,9 +133,9 @@ class Versandsendung(Document):
 			self.error_message = _format_error(exc)
 			if getattr(exc, "raw", None):
 				self.api_response = json.dumps(exc.raw, indent=2, ensure_ascii=False, default=str)[:100000]
-			self.save(ignore_permissions=True)
+			self.save()
 			frappe.db.commit()
-			frappe.throw(self.error_message, title=_("Etikett fehlgeschlagen"))
+			frappe.throw(escape_html(self.error_message), title=_("Etikett fehlgeschlagen"))
 
 		self._apply_label_result(result)
 		if not carrier.supports_tracking:
@@ -223,6 +233,7 @@ class Versandsendung(Document):
 	# ---------------------------------------------------------- tracking
 	@frappe.whitelist()
 	def refresh_tracking(self, commit: bool = False):
+		self.check_permission("write")
 		if not (self.shipment_number or self.tracking_number):
 			frappe.throw(_("Für diese Sendung gibt es noch keine Sendungsnummer."))
 		try:
@@ -241,7 +252,7 @@ class Versandsendung(Document):
 						"Für dieses Produkt wurde keine Track-ID zurückgegeben (kein Tracking)."
 					)
 				self.flags.ignore_validate = True
-				self.save(ignore_permissions=True)
+				self.save()
 				if commit:
 					frappe.db.commit()
 			frappe.msgprint(
@@ -249,11 +260,11 @@ class Versandsendung(Document):
 			)
 			return {"status": self.tracking_status}
 		except CarrierError as exc:
-			frappe.throw(_("Tracking fehlgeschlagen: {0}").format(exc))
+			frappe.throw(_("Tracking fehlgeschlagen: {0}").format(escape_html(str(exc))))
 
 		changed = self._apply_tracking_result(result)
 		self.flags.ignore_validate = True
-		self.save(ignore_permissions=True)
+		self.save()
 		self._mirror_tracking_to_delivery_note()
 		if changed and result.status in (cbase.TRACK_PROBLEM, cbase.TRACK_RETURN):
 			_notify_problem(self)
@@ -371,9 +382,17 @@ def _notify_problem(doc):
 	if not users:
 		return
 
-	subject = _("Versand: {0} – {1}").format(doc.tracking_status, doc.shipment_number or doc.name)
+	# tracking_status ist ein fester Select-Wert (sicher); shipment_number und
+	# tracking_status_text kommen roh vom Carrier und landen hier in HTML-
+	# gerendertem Kontext (Notification Log / E-Mail) - escapen.
+	subject = _("Versand: {0} – {1}").format(
+		doc.tracking_status, escape_html(doc.shipment_number or doc.name)
+	)
 	message = _("Sendung {0} ({1}, {2}): {3}").format(
-		doc.name, doc.carrier, doc.customer_name or "", doc.tracking_status_text or doc.tracking_status
+		doc.name,
+		doc.carrier,
+		escape_html(doc.customer_name or ""),
+		escape_html(doc.tracking_status_text or doc.tracking_status),
 	)
 	for user in users:
 		frappe.get_doc(

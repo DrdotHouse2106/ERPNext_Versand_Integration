@@ -9,6 +9,8 @@ ERPNext-Dokumente, er nimmt fertige Payload-Dicts entgegen (gebaut von
 
 from __future__ import annotations
 
+from urllib.parse import urlparse
+
 import requests
 from frappe import _
 
@@ -16,6 +18,14 @@ from versand_integration.carriers.deutsche_post import constants as C
 from versand_integration.carriers.exceptions import CarrierAPIError, CarrierConfigError
 
 _TIMEOUT = 45
+
+# Marken-/Motiv-PDFs werden von einem eigenen Deutsche-Post-Dokumentenserver
+# ausgeliefert (z. B. pcf-next.tcb.deutschepost.de), nicht von api-eu.dhl.com.
+# Der "link" in der Checkout-Antwort ist zwar carrier-generiert, aber wir
+# holen ihn trotzdem nicht blind ab (Server-Side-Request-Forgery, falls die
+# API-Antwort je manipuliert/umgeleitet würde) - Host-Allowlist + Größenlimit.
+_DOWNLOAD_HOST_SUFFIX = ".deutschepost.de"
+_MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024  # 20 MB, Marken-PDFs sind wenige KB
 
 
 class DPClient:
@@ -119,7 +129,7 @@ class DPClient:
 	# ------------------------------------------------------------ self-test
 	def test_connection(self) -> dict:
 		self._wallet_balance = None
-		token = self._get_token()
+		self._get_token()  # wirft bei Fehlschlag, Rückgabewert selbst wird nicht ausgegeben
 		balance = self._wallet_balance
 		balance_msg = (
 			_("Portokasse-Guthaben: {0} €.").format(f"{balance / 100:.2f}")
@@ -134,7 +144,6 @@ class DPClient:
 				)
 			],
 			"wallet_balance": balance,
-			"_token_preview": (token[:8] + "…") if token else None,
 		}
 
 	# ------------------------------------------------------- Marken-Erstellung
@@ -159,9 +168,33 @@ class DPClient:
 		return self._request("POST", C.RETOURE_PATH, json_body=body)
 
 	def download_pdf(self, link: str) -> bytes:
+		host = (urlparse(link).hostname or "").lower()
+		if urlparse(link).scheme != "https" or not (
+			host == "deutschepost.de" or host.endswith(_DOWNLOAD_HOST_SUFFIX)
+		):
+			raise CarrierAPIError(
+				_("Internetmarke-PDF Download abgelehnt: unerwarteter Host in der Antwort ({0}).").format(
+					host or link
+				)
+			)
 		try:
-			resp = requests.get(link, timeout=_TIMEOUT)
+			resp = requests.get(link, timeout=_TIMEOUT, stream=True, allow_redirects=False)
+			if resp.is_redirect:
+				raise CarrierAPIError(
+					_("Internetmarke-PDF Download abgelehnt: unerwarteter Redirect von {0}.").format(host)
+				)
 			resp.raise_for_status()
+			chunks = []
+			total = 0
+			for chunk in resp.iter_content(chunk_size=65536):
+				total += len(chunk)
+				if total > _MAX_DOWNLOAD_BYTES:
+					raise CarrierAPIError(
+						_("Internetmarke-PDF Download abgelehnt: Antwort größer als {0} MB.").format(
+							_MAX_DOWNLOAD_BYTES // (1024 * 1024)
+						)
+					)
+				chunks.append(chunk)
 		except requests.RequestException as exc:
 			raise CarrierAPIError(_("Internetmarke-PDF Download fehlgeschlagen: {0}").format(exc)) from exc
-		return resp.content
+		return b"".join(chunks)
