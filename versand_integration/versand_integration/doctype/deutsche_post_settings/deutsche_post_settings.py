@@ -3,7 +3,7 @@ from urllib.parse import urlparse
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import escape_html
+from frappe.utils import cint, escape_html
 
 from versand_integration.carriers.exceptions import CarrierError
 
@@ -75,3 +75,70 @@ class DeutschePostSettings(Document):
 		frappe.db.commit()
 
 		return catalog_sync.sync_catalog(catalog)
+
+	@frappe.whitelist()
+	def charge_wallet(self, amount_cent):
+		"""PUT /app/wallet – belastet ECHTES GELD über das in der Portokasse
+		hinterlegte Zahlungsmittel. Kein Sandbox-Modus dafür in der Spec."""
+		self.check_permission("write")
+		amount_cent = cint(amount_cent)
+		if amount_cent < 1:
+			frappe.throw(_("Aufladebetrag muss größer als 0 sein."))
+
+		from versand_integration.carriers.deutsche_post import accounting
+		from versand_integration.carriers.deutsche_post.client import DPClient
+
+		try:
+			result = DPClient(self).charge_wallet(amount_cent)
+		except CarrierError as exc:
+			frappe.throw(
+				_("Aufladung fehlgeschlagen: {0}").format(escape_html(str(exc))),
+				title=_("Internetmarke Portokasse aufladen"),
+			)
+
+		booking = accounting.book_topup(
+			self, amount_cent=amount_cent, shop_order_id=result.get("shopOrderId")
+		)
+		return {
+			"ok": True,
+			"wallet_balance": result.get("walletBalance"),
+			"shop_order_id": result.get("shopOrderId"),
+			"booking_warning": booking.get("warning"),
+		}
+
+	@frappe.whitelist()
+	def reconcile_wallet_balance(self):
+		"""Vergleicht das echte Portokasse-Guthaben (live über die API) mit dem
+		Saldo des Buchungskontos in ERPNext. Reine Kontrolle, keine Buchung -
+		nützlich um zu prüfen, ob die Portokasse wirklich ausschließlich über
+		diese App genutzt wurde (Voraussetzung für die automatischen
+		Journalbuchungen, siehe Warnhinweis oben)."""
+		if not self.datev_buchungskonto:
+			frappe.throw(_("Kein Buchungskonto (Portokasse) in den Settings hinterlegt."))
+
+		from erpnext.accounts.utils import get_balance_on
+
+		from versand_integration.carriers.deutsche_post.client import DPClient
+
+		try:
+			live = DPClient(self).test_connection()
+		except CarrierError as exc:
+			frappe.throw(
+				_("Guthaben konnte nicht abgerufen werden: {0}").format(escape_html(str(exc))),
+				title=_("Internetmarke Saldo-Abgleich"),
+			)
+
+		live_balance_cent = live.get("wallet_balance")
+		if live_balance_cent is None:
+			frappe.throw(_("Die API hat kein Guthaben zurückgegeben."))
+
+		ledger_balance = get_balance_on(account=self.datev_buchungskonto, company=self.datev_company)
+		ledger_balance_cent = round(frappe.utils.flt(ledger_balance) * 100)
+		diff_cent = live_balance_cent - ledger_balance_cent
+
+		return {
+			"live_balance_cent": live_balance_cent,
+			"ledger_balance_cent": ledger_balance_cent,
+			"diff_cent": diff_cent,
+			"matches": abs(diff_cent) < 1,
+		}

@@ -167,6 +167,14 @@ class DPClient:
 		"""POST /app/retoure – Erstattung nicht genutzter Marken beantragen."""
 		return self._request("POST", C.RETOURE_PATH, json_body=body)
 
+	def charge_wallet(self, amount_cent: int) -> dict:
+		"""PUT /app/wallet?amount=<eurocent> – belastet echtes Geld über das in
+		der Portokasse hinterlegte Zahlungsmittel. ChargeWalletResponse:
+		{shopOrderId, walletBalance}."""
+		if not isinstance(amount_cent, int) or amount_cent < 1:
+			raise CarrierConfigError(_("Aufladebetrag muss eine positive Ganzzahl in Cent sein."))
+		return self._request("PUT", C.WALLET_PATH, params={"amount": amount_cent})
+
 	def download_pdf(self, link: str) -> bytes:
 		host = (urlparse(link).hostname or "").lower()
 		if urlparse(link).scheme != "https" or not (

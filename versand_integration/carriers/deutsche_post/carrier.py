@@ -7,7 +7,7 @@ from frappe import _
 
 from versand_integration import absender as absender_mod
 from versand_integration.carriers.base import BaseCarrier, LabelResult
-from versand_integration.carriers.deutsche_post import constants as C
+from versand_integration.carriers.deutsche_post import accounting, constants as C
 from versand_integration.carriers.deutsche_post import mapper
 from versand_integration.carriers.deutsche_post.client import DPClient
 from versand_integration.carriers.exceptions import CarrierError
@@ -86,6 +86,13 @@ class DeutschePostCarrier(BaseCarrier):
 		vouchers = cart.get("voucherList") or []
 		voucher_id = vouchers[0].get("voucherId") if vouchers else None
 		track_id = vouchers[0].get("trackId") if vouchers else None
+
+		if settings.mode != C.MODE_PREVIEW:
+			booking = accounting.book_purchase(
+				settings, amount_cent=body.get("total"), reference=voucher_id or shipment.name
+			)
+			if booking.get("warning"):
+				frappe.msgprint(booking["warning"], title=_("Internetmarke Buchhaltung"), indicator="orange")
 
 		return LabelResult(
 			shipment_number=voucher_id or f"Vorschau-{shipment.name}",
