@@ -2,6 +2,13 @@ frappe.ui.form.on("Versandsendung", {
 	refresh(frm) {
 		frm.set_df_property("packages", "cannot_add_rows", frm.doc.status === "Etikett erstellt");
 
+		// Nur Adressen des gewählten Kunden zur Auswahl anbieten (Standard-
+		// Frappe-Muster, wie in Sales Order/Delivery Note).
+		frm.set_query("customer_address", () => ({
+			query: "frappe.contacts.doctype.address.address.address_query",
+			filters: { link_doctype: "Customer", link_name: frm.doc.customer },
+		}));
+
 		if (frm.doc.docstatus === 0 && frm.doc.status !== "Etikett erstellt") {
 			frm.add_custom_button(__("Etikett erstellen"), () => {
 				frm.call({
@@ -78,5 +85,33 @@ frappe.ui.form.on("Versandsendung", {
 		if (frm.doc.delivery_note) {
 			frm.trigger("refresh");
 		}
+	},
+
+	customer(frm) {
+		if (frm.doc.delivery_note) return; // Lieferschein hat serverseitig Vorrang (validate())
+		frm.set_value("customer_address", "");
+		if (!frm.doc.customer) return;
+		frappe.db.get_value("Customer", frm.doc.customer, "customer_primary_address").then((r) => {
+			if (r.message && r.message.customer_primary_address) {
+				frm.set_value("customer_address", r.message.customer_primary_address);
+			}
+		});
+	},
+
+	customer_address(frm) {
+		if (!frm.doc.customer_address) return;
+		frappe.db.get_doc("Address", frm.doc.customer_address).then((addr) => {
+			// Straße komplett (inkl. Hausnummer) in receiver_street - wird beim
+			// Speichern serverseitig automatisch aufgeteilt (_split_street()).
+			frm.set_value("receiver_name", addr.address_title || frm.doc.customer_name || "");
+			frm.set_value("receiver_address_addition", addr.address_line2 || "");
+			frm.set_value("receiver_street", addr.address_line1 || "");
+			frm.set_value("receiver_house_number", "");
+			frm.set_value("receiver_postal_code", addr.pincode || "");
+			frm.set_value("receiver_city", addr.city || "");
+			if (addr.country) frm.set_value("receiver_country", addr.country);
+			frm.set_value("receiver_email", addr.email_id || frm.doc.receiver_email);
+			frm.set_value("receiver_phone", addr.phone || frm.doc.receiver_phone);
+		});
 	},
 });

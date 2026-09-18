@@ -62,7 +62,17 @@ Siehe [„Testvorgehen"](#testvorgehen) unten für die geplante Reihenfolge.
 
 Ablauf: **Lieferschein buchen → „Versandetikett erstellen" → Carrier + Absender wählen** →
 PDF öffnet sich, Sendungsnummer & Tracking-Link stehen am Lieferschein und an der
-Versandsendung. Storno der Versandsendung:
+Versandsendung.
+
+**Manuelle Versandsendung ohne Lieferschein:** `Kunde` ist nur wählbar, wenn kein
+Lieferschein verknüpft ist (sonst kommt der Kunde von dort). Nach der Kundenwahl
+wird – falls am Kunden ein `customer_primary_address` hinterlegt ist – automatisch
+dessen `Kundenadresse` vorbelegt; das Feld selbst zeigt nur Adressen des gewählten
+Kunden zur Auswahl (Standard-Frappe-Adresssuche). Beim Auswählen einer Adresse
+werden die Empfänger-Felder (Name, Straße, PLZ, Ort, Land, E-Mail, Telefon) damit
+überschrieben – spart bei wiederkehrenden Kunden das manuelle Abtippen.
+
+Storno der Versandsendung:
 * DHL – Sendung wird per `DELETE /orders` gelöscht.
 * DPD – nicht nötig (nicht manifestierte Sendungen einfach nicht abschließen).
 * Deutsche Post – Retoure (Erstattung) wird automatisch per `POST /app/retoure` beantragt,
