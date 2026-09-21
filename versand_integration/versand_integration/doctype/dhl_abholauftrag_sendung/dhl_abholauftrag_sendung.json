@@ -1,0 +1,30 @@
+{
+ "actions": [],
+ "creation": "2026-09-21 12:00:00",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "versandsendung",
+  "shipment_no",
+  "size",
+  "customer_reference"
+ ],
+ "fields": [
+  {"fieldname": "versandsendung", "fieldtype": "Link", "label": "Versandsendung", "options": "Versandsendung", "description": "Optional – befüllt Sendungsnummer automatisch."},
+  {"fieldname": "shipment_no", "fieldtype": "Data", "label": "Sendungsnummer", "description": "Erleichtert dem Fahrer die Zuordnung. Leer = DHL vergibt beim Abholauftrag mit Etikettendruck eine Nummer."},
+  {"fieldname": "size", "fieldtype": "Select", "label": "Größe", "options": "\nS\nM\nL", "description": "S bis 30 cm, M bis 60 cm, L bis 120 cm (längste Seite). Nur Pflicht bei 'Vereinbarter Abholort' (ohne Abrechnungsnummer)."},
+  {"fieldname": "customer_reference", "fieldtype": "Data", "label": "Referenz"}
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-09-21 12:00:00",
+ "modified_by": "Administrator",
+ "module": "Versand Integration",
+ "name": "DHL Abholauftrag Sendung",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
