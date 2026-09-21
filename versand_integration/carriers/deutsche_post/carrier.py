@@ -7,8 +7,8 @@ from frappe import _
 
 from versand_integration import absender as absender_mod
 from versand_integration.carriers.base import BaseCarrier, LabelResult
-from versand_integration.carriers.deutsche_post import accounting, constants as C
-from versand_integration.carriers.deutsche_post import mapper
+from versand_integration.carriers.deutsche_post import accounting, mapper
+from versand_integration.carriers.deutsche_post import constants as C
 from versand_integration.carriers.deutsche_post.client import DPClient
 from versand_integration.carriers.exceptions import CarrierError
 

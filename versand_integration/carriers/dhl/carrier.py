@@ -14,6 +14,27 @@ def get_dhl_settings():
 	return frappe.get_cached_doc("DHL Settings")
 
 
+def strip_label_data(payload):
+	"""Kopie der DHL-Antwort ohne die Base64-Dokumente (label/returnLabel/codLabel).
+
+	Wegen `includeDocs=include` enthaelt die Antwort das komplette Etikett als
+	Base64. Es haengt nach `_apply_label_result()` bereits als File am Dokument -
+	zusaetzlich im `api_response`-Feld waeren das je Sendung schnell mehrere
+	hundert KB in `tabVersandsendung` (und in jedem Backup). Der Schluessel "b64"
+	wird deshalb rekursiv durch einen Platzhalter ersetzt; alles andere (Status,
+	Sendungsnummern, Validierungsmeldungen) bleibt fuer die Fehlersuche erhalten.
+	"""
+	if isinstance(payload, dict):
+		return {
+			key: (f"<{len(value)} Zeichen Base64 entfernt>" if key == "b64" and isinstance(value, str)
+				else strip_label_data(value))
+			for key, value in payload.items()
+		}
+	if isinstance(payload, list):
+		return [strip_label_data(item) for item in payload]
+	return payload
+
+
 class DHLCarrier(BaseCarrier):
 	name = "DHL"
 
@@ -54,7 +75,7 @@ class DHLCarrier(BaseCarrier):
 			label_mimetype=main.label_mimetype,
 			packages=packages,
 			raw_request=payload,
-			raw_response=response,
+			raw_response=strip_label_data(response),
 			return_label_b64=return_label.get("b64"),
 			return_label_mimetype="application/pdf" if client.doc_format == "PDF" else "text/plain",
 		)

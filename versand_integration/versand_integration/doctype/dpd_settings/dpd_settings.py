@@ -9,6 +9,9 @@ from versand_integration.carriers.exceptions import CarrierError
 class DPDSettings(Document):
 	@frappe.whitelist()
 	def test_connection(self):
+		# Echter Login mit den hinterlegten Zugangsdaten -> Schreibrecht.
+		self.check_permission("write")
+
 		from versand_integration.carriers.dpd.client import DPDClient
 
 		try:

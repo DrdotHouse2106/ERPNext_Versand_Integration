@@ -12,7 +12,7 @@ from versand_integration.carriers.exceptions import CarrierConfigError
 
 def _weight_10g(weight_kg) -> int:
 	"""DPD-Gewicht: Gramm auf 10 g gerundet, ohne Dezimalpunkt (300 = 3 kg)."""
-	return max(1, int(round(flt(weight_kg) * 100)))
+	return max(1, round(flt(weight_kg) * 100))
 
 
 def _address(name1, name2, street, house_no, country, zip_code, city, state=None, email=None, phone=None):
@@ -42,7 +42,7 @@ def _country(value) -> str:
 	value = value.strip()
 	if len(value) == 2:
 		return value.upper()
-	import frappe  # noqa: PLC0415
+	import frappe
 
 	code = frappe.db.get_value("Country", value, "code")
 	if not code:

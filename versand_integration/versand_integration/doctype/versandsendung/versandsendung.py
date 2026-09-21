@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+from typing import ClassVar
 
 import frappe
 from frappe import _
@@ -17,6 +18,23 @@ STATUS_DRAFT = "Entwurf"
 STATUS_CREATED = "Etikett erstellt"
 STATUS_CANCELLED = "Storniert"
 STATUS_ERROR = "Fehler"
+
+# Obergrenze fuer die API-Protokollfelder (api_request/api_response). Ohne Limit
+# landen z. B. die kompletten Base64-Etiketten einer Mehrpaketsendung im
+# Dokument - die haengen als File schon am Dokument und blaehen sonst Tabelle
+# und Backups je Sendung um hunderte KB auf.
+_MAX_API_LOG_CHARS = 100000
+
+
+def _api_log(payload) -> str | None:
+	"""Request/Response fuer die API-Protokollfelder serialisieren (gekuerzt)."""
+	if payload is None:
+		return None
+	text = json.dumps(payload, indent=2, ensure_ascii=False, default=str)
+	if len(text) <= _MAX_API_LOG_CHARS:
+		return text
+	# Kuerzung kenntlich machen - sonst sieht der Rest nach kaputtem JSON aus.
+	return text[:_MAX_API_LOG_CHARS] + f"\n… gekürzt bei {_MAX_API_LOG_CHARS} Zeichen …"
 
 
 class Versandsendung(Document):
@@ -46,7 +64,11 @@ class Versandsendung(Document):
 				frappe.throw(
 					_("Sendung konnte beim Carrier nicht storniert werden: {0}").format(escape_html(str(exc)))
 				)
-		self.status = STATUS_CANCELLED
+		# db_set statt einfacher Zuweisung: on_cancel laeuft in Frappes
+		# run_post_save_methods(), also NACH dem db_update() des Storno-Saves -
+		# ein `self.status = ...` hier landet nie in der Datenbank und die
+		# Sendung bliebe dauerhaft auf "Etikett erstellt" stehen.
+		self.db_set("status", STATUS_CANCELLED, update_modified=False)
 		self._clear_delivery_note_backref()
 
 	# ------------------------------------------------------------- prefill
@@ -136,7 +158,7 @@ class Versandsendung(Document):
 			self.status = STATUS_ERROR
 			self.error_message = _format_error(exc)
 			if getattr(exc, "raw", None):
-				self.api_response = json.dumps(exc.raw, indent=2, ensure_ascii=False, default=str)[:100000]
+				self.api_response = _api_log(exc.raw)
 			self.save()
 			frappe.db.commit()
 			frappe.throw(escape_html(self.error_message), title=_("Etikett fehlgeschlagen"))
@@ -170,7 +192,7 @@ class Versandsendung(Document):
 			"label_file": self.label_file,
 		}
 
-	_SETTINGS_DOCTYPE = {
+	_SETTINGS_DOCTYPE: ClassVar[dict[str, str]] = {
 		"DHL": "DHL Settings",
 		"DPD": "DPD Settings",
 		"Deutsche Post": "Deutsche Post Settings",
@@ -196,8 +218,8 @@ class Versandsendung(Document):
 		self.shipment_number = result.shipment_number
 		self.tracking_number = result.tracking_number
 		self.tracking_url = result.tracking_url
-		self.api_request = json.dumps(result.raw_request, indent=2, ensure_ascii=False, default=str)
-		self.api_response = json.dumps(result.raw_response, indent=2, ensure_ascii=False, default=str)
+		self.api_request = _api_log(result.raw_request)
+		self.api_response = _api_log(result.raw_response)
 
 		if result.label_b64:
 			self.label_file = self._save_label(
@@ -238,7 +260,9 @@ class Versandsendung(Document):
 	def _cancel_with_carrier(self):
 		carrier = get_carrier(self.carrier)
 		result = carrier.cancel_label(self)
-		self.api_response = json.dumps(result, indent=2, ensure_ascii=False, default=str)
+		# db_set: laeuft aus on_cancel heraus, also nach dem db_update() des
+		# Saves - eine einfache Zuweisung waere verloren (siehe on_cancel).
+		self.db_set("api_response", _api_log(result), update_modified=False)
 
 	# ---------------------------------------------------------- tracking
 	@frappe.whitelist()
@@ -382,13 +406,18 @@ def _notify_problem(doc):
 		return
 
 	role = settings.tracking_notify_role or "Stock Manager"
-	users = [
-		u
-		for u in frappe.get_all(
-			"Has Role", filters={"role": role, "parenttype": "User"}, pluck="parent"
-		)
-		if frappe.db.get_value("User", u, "enabled")
-	]
+	role_holders = frappe.get_all(
+		"Has Role", filters={"role": role, "parenttype": "User"}, pluck="parent"
+	)
+	if not role_holders:
+		return
+	# Eine Abfrage statt eines get_value() je Rolleninhaber - bei einer Rolle mit
+	# vielen Nutzern lief das sonst als N+1 bei jedem Poll-Durchlauf.
+	users = frappe.get_all(
+		"User",
+		filters={"name": ["in", role_holders], "enabled": 1},
+		fields=["name", "email"],
+	)
 	if not users:
 		return
 
@@ -410,7 +439,7 @@ def _notify_problem(doc):
 				"doctype": "Notification Log",
 				"subject": subject,
 				"email_content": message,
-				"for_user": user,
+				"for_user": user.name,
 				"type": "Alert",
 				"document_type": "Versandsendung",
 				"document_name": doc.name,
@@ -418,7 +447,7 @@ def _notify_problem(doc):
 		).insert(ignore_permissions=True)
 
 	if cint(settings.tracking_notify_email):
-		recipients = [frappe.db.get_value("User", u, "email") or u for u in users]
+		recipients = [u.email or u.name for u in users]
 		frappe.sendmail(
 			recipients=recipients,
 			subject=subject,

@@ -28,10 +28,14 @@ frappe.ui.form.on("Versandsendung", {
 							freeze_message: __("Erstelle Sendungen für die ganze Woche …"),
 						}).then((r) => {
 							const rows = r.message || [];
+							// Alles, was aus der Antwort ins HTML von msgprint geht,
+							// escapen - shipment_number kommt roh vom Carrier.
 							const lines = rows.map((row) =>
 								row.error
 									? `${row.date}: ${__("Fehler")} – ${frappe.utils.escape_html(row.error)}`
-									: `${row.date}: ${row.name} (${row.shipment_number || row.status})`
+									: `${row.date}: ${row.name} (${frappe.utils.escape_html(
+											row.shipment_number || row.status || ""
+										)})`
 							);
 							frappe.msgprint({
 								title: __("Wochen-Sendungen erstellt"),
@@ -54,7 +58,9 @@ frappe.ui.form.on("Versandsendung", {
 				}).then((r) => {
 					if (r.message) {
 						frappe.show_alert({
-							message: __("Sendungsnummer {0}", [r.message.shipment_number]),
+							message: __("Sendungsnummer {0}", [
+								frappe.utils.escape_html(r.message.shipment_number || ""),
+							]),
 							indicator: "green",
 						});
 						frm.reload_doc();

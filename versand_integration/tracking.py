@@ -5,6 +5,8 @@ from __future__ import annotations
 import frappe
 from frappe.utils import add_to_date, cint, now_datetime
 
+from versand_integration.carriers.registry import carriers_with_tracking
+
 
 def poll_open_shipments():
 	"""Aktualisiert offene, gebuchte Versandsendungen mit Sendungsnummer.
@@ -23,11 +25,15 @@ def poll_open_shipments():
 	stop_after_days = cint(settings.tracking_stop_after_days) or 21
 	give_up_before = add_to_date(now_datetime(), days=-stop_after_days)
 
+	carriers = carriers_with_tracking()
+	if not carriers:
+		return
+
 	names = frappe.get_all(
 		"Versandsendung",
 		filters={
 			"docstatus": 1,
-			"carrier": ["in", ["DHL", "DPD"]],
+			"carrier": ["in", carriers],
 			"tracking_polling_active": 1,
 			"shipment_number": ["is", "set"],
 		},
@@ -36,6 +42,10 @@ def poll_open_shipments():
 			["tracking_last_update", "<", stale_before],
 		],
 		pluck="name",
+		# Am laengsten nicht aktualisierte zuerst: bei mehr offenen Sendungen als
+		# dem Limit kaeme sonst immer dieselbe (beliebige) Teilmenge dran und der
+		# Rest wuerde nie aktualisiert.
+		order_by="tracking_last_update asc",
 		limit=500,
 	)
 

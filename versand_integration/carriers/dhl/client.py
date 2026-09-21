@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 
 import frappe
@@ -12,7 +13,7 @@ from frappe import _
 from versand_integration.carriers.dhl import constants as C
 from versand_integration.carriers.exceptions import CarrierAPIError, CarrierConfigError
 
-_TOKEN_CACHE_KEY = "versand_integration:dhl:oauth_token"
+_TOKEN_CACHE_PREFIX = "versand_integration:dhl:oauth_token:"
 _TIMEOUT = 60
 
 
@@ -43,6 +44,16 @@ class DHLClient:
 		self.doc_format = settings.doc_format or C.DEFAULT_DOC_FORMAT
 		self.pickup_base_url = C.PICKUP_SANDBOX_BASE_URL if self.sandbox else C.PICKUP_PRODUCTION_BASE_URL
 
+		# Cache-Key haengt an Umgebung UND Zugangsdaten: ein global geteilter Key
+		# wuerde nach dem Umstellen von Sandbox auf Produktion (oder nach einer
+		# Key-Rotation) bis zu einer Stunde lang das alte Token an den neuen
+		# Endpunkt schicken - ein 401, dessen Ursache niemand findet. Gehasht,
+		# damit keine Zugangsdaten im Redis-Schluessel stehen.
+		fingerprint = hashlib.sha256(
+			f"{self.token_url}|{self.api_key}|{self.gkp_username}".encode()
+		).hexdigest()[:32]
+		self._token_cache_key = f"{_TOKEN_CACHE_PREFIX}{fingerprint}"
+
 	# ------------------------------------------------------------------ auth
 	def _check_config(self):
 		if not self.api_key:
@@ -55,7 +66,7 @@ class DHLClient:
 			raise CarrierConfigError(_("DHL Settings: API Secret wird für OAuth2 benötigt."))
 
 	def _oauth_token(self) -> str:
-		cached = frappe.cache().get_value(_TOKEN_CACHE_KEY)
+		cached = frappe.cache().get_value(self._token_cache_key)
 		if cached:
 			return cached
 
@@ -83,8 +94,11 @@ class DHLClient:
 		payload = resp.json()
 		token = payload["access_token"]
 		expires_in = int(payload.get("expires_in", 3600))
-		frappe.cache().set_value(_TOKEN_CACHE_KEY, token, expires_in_sec=max(expires_in - 60, 60))
+		frappe.cache().set_value(self._token_cache_key, token, expires_in_sec=max(expires_in - 60, 60))
 		return token
+
+	def _forget_token(self):
+		frappe.cache().delete_value(self._token_cache_key)
 
 	def _headers(self) -> dict:
 		headers = {
@@ -103,7 +117,9 @@ class DHLClient:
 		return headers
 
 	# ------------------------------------------------------------- requests
-	def _request(self, method: str, path: str, *, params=None, json_body=None, base_url=None) -> dict:
+	def _request(
+		self, method: str, path: str, *, params=None, json_body=None, base_url=None, _retry_auth: bool = True
+	) -> dict:
 		self._check_config()
 		url = f"{base_url or self.base_url}{path}"
 		try:
@@ -121,6 +137,16 @@ class DHLClient:
 		body = _safe_json(resp)
 		if resp.status_code in (200, 201, 207):
 			return body
+
+		if resp.status_code == 401 and _retry_auth and self.auth_method == "OAuth2":
+			# Das gecachte Token kann serverseitig ungueltig geworden sein (App-
+			# Credentials rotiert/widerrufen), bevor seine Laufzeit abgelaufen ist.
+			# Einmal verwerfen, frisch holen und wiederholen - erst danach den
+			# Fehler durchreichen (analog zum Retry im DPD-Client).
+			self._forget_token()
+			return self._request(
+				method, path, params=params, json_body=json_body, base_url=base_url, _retry_auth=False
+			)
 
 		raise CarrierAPIError(
 			_("DHL-API Fehler (HTTP {0}).").format(resp.status_code),

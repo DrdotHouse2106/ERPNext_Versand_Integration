@@ -182,9 +182,9 @@ def _details(weight_kg, length_cm, width_cm, height_cm):
 	if length_cm and width_cm and height_cm:
 		details["dim"] = {
 			"uom": "cm",
-			"length": int(round(flt(length_cm))),
-			"width": int(round(flt(width_cm))),
-			"height": int(round(flt(height_cm))),
+			"length": round(flt(length_cm)),
+			"width": round(flt(width_cm)),
+			"height": round(flt(height_cm)),
 		}
 	return details
 

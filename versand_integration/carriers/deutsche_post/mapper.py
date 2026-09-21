@@ -9,8 +9,8 @@ from __future__ import annotations
 import frappe
 from frappe import _
 
-from versand_integration.carriers.dhl.mapper import to_alpha3
 from versand_integration.carriers.deutsche_post import constants as C
+from versand_integration.carriers.dhl.mapper import to_alpha3
 from versand_integration.carriers.exceptions import CarrierConfigError
 
 

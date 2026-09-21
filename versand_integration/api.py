@@ -4,6 +4,12 @@ import frappe
 from frappe import _
 from frappe.utils import cint
 
+# Obergrenze für die Wochen-Sammelbuchung. Jeder Tag erzeugt einen echten
+# Carrier-Auftrag (Kosten, bei Deutsche Post eine Portokasse-Abbuchung) -
+# der Endpunkt ist whitelisted und damit auch direkt aufrufbar, nicht nur
+# über den Button, der immer 5 schickt.
+MAX_WEEK_SHIPMENTS = 10
+
 
 @frappe.whitelist()
 def create_shipment_from_delivery_note(
@@ -20,6 +26,14 @@ def create_shipment_from_delivery_note(
 	dn = frappe.get_doc("Delivery Note", delivery_note)
 	if dn.docstatus != 1:
 		frappe.throw(_("Der Lieferschein muss gebucht sein."))
+
+	# Lieferschein-Zeile bis zum Ende dieser Transaktion sperren, BEVOR wir nach
+	# einer vorhandenen Versandsendung suchen. Ohne diese Sperre finden zwei
+	# parallele Aufrufe (Doppelklick, zwei Tabs) beide kein `existing`, legen
+	# beide eine Versandsendung an und kaufen beide ein Etikett - der
+	# for_update-Schutz in Versandsendung.create_label() greift dort nicht, weil
+	# es zwei verschiedene Dokumente sind.
+	frappe.db.get_value("Delivery Note", delivery_note, "name", for_update=True)
 
 	existing = frappe.db.get_value(
 		"Versandsendung",
@@ -83,8 +97,25 @@ def create_week_shipments(source: str, create_label: int = 1, count: int = 5):
 	if not frappe.has_permission("Versandsendung", "create"):
 		frappe.throw(_("Keine Berechtigung, Versandsendungen anzulegen."), frappe.PermissionError)
 
+	# Der Abholtag wird über DPD-Felder gesteuert (dpd_pickup_option/-date) -
+	# für andere Carrier würde diese Funktion nur stumpf N Etiketten kaufen.
+	if src.carrier != "DPD":
+		frappe.throw(
+			_("»Für die ganze Woche buchen« gibt es nur für DPD-Sendungen (diese Sendung: {0}).").format(
+				src.carrier
+			)
+		)
+
+	count = cint(count) or 5
+	if count < 1 or count > MAX_WEEK_SHIPMENTS:
+		frappe.throw(
+			_("Anzahl muss zwischen 1 und {0} liegen – jeder Tag löst einen echten Versandauftrag aus.").format(
+				MAX_WEEK_SHIPMENTS
+			)
+		)
+
 	results = []
-	for day in next_business_days(cint(count) or 5):
+	for day in next_business_days(count):
 		new_doc = frappe.copy_doc(src)
 		new_doc.dpd_pickup_option = "Wunschtag"
 		new_doc.dpd_pickup_date = day
