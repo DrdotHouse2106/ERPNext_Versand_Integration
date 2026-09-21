@@ -7,7 +7,7 @@ ohne Drittanbieter-Middleware.
 | --- | --- | --- |
 | **DHL** | Parcel DE Shipping v2 (REST, OAuth2/Basic) + Retoure (services.dhlRetoure) + Paket DE Abholen v3 (Abholauftrag) | ✅ Etikett erstellen + stornieren live verifiziert; Retoure + Abholauftrag implementiert, noch nicht live getestet |
 | **DPD** | DE WebConnect (SOAP: LoginService V2.0 + ShipmentService V4.5, via `zeep`) | Login + Sendung erstellen live verifiziert; Abholtag-Steuerung (shippingDate) implementiert |
-| **Deutsche Post** | Internetmarke – neue REST-API „Post DE Internetmarke" (DHL Developer Portal, kein Partnervertrag mehr) | ✅ live verifiziert: Marken-Erstellung (Vorschau/Produktiv), Portokasse-Aufladung, optionale DATEV-Journalbuchungen |
+| **Deutsche Post** | Internetmarke – neue REST-API „Post DE Internetmarke" (DHL Developer Portal, kein Partnervertrag mehr) | ✅ Marken-Erstellung (Vorschau/Produktiv) live verifiziert; Portokasse-Aufladung + optionale DATEV-Journalbuchungen implementiert, noch nicht live getestet |
 
 Geschrieben für **Frappe / ERPNext v15–v16**. Python-Abhängigkeit: `zeep` (SOAP, für DPD).
 
@@ -17,13 +17,16 @@ Geschrieben für **Frappe / ERPNext v15–v16**. Python-Abhängigkeit: `zeep` (S
 
 ---
 
-## Status: Testphase (Stand 11.09.2026)
+## Status: Testphase (Stand 21.09.2026)
 
-Erster Live-Testlauf gegen eine echte ERPNext-Instanz (Frappe Cloud, Sandbox-Zugänge)
-ist gelaufen. Getestet wurde per API mit freistehenden, danach wieder gelöschten
-Test-Versandsendungen (kein Kunde/Lieferschein nötig, keine Spuren im System).
+Alle drei Carrier hängen aktuell an Test-/Sandbox-Zugängen (DHL Parcel DE Shipping
+Sandbox, DPD WebConnect Stage, eine Deutsche-Post-Portokasse der „Entwickler"-Klasse
+mit fiktivem Guthaben) – es sind nirgends echte Kundendaten oder echtes Geld im Spiel,
+Live-Tests gegen alle drei APIs sind also gefahrlos möglich. Getestet wurde bisher per
+API mit freistehenden, danach wieder gelöschten Test-Versandsendungen (kein
+Kunde/Lieferschein nötig, keine Spuren im System).
 
-✅ **Live gegen die Sandbox verifiziert**
+✅ **Live gegen Sandbox/Testzugänge verifiziert**
 - **DHL**: „Verbindung testen" (OAuth2), **Etikett erstellen** (echte Sendungsnummer,
   gültiges PDF-Label per API heruntergeladen und geprüft) und **Stornieren**
   (`DELETE /orders`, „1 von 1 Sendung erfolgreich storniert.") – alles Ende-zu-Ende erfolgreich
@@ -31,18 +34,28 @@ Test-Versandsendungen (kein Kunde/Lieferschein nötig, keine Spuren im System).
   **`storeOrders`** liefern eine echte Sendungsnummer + Tracking-Link. Das Label-PDF fehlte
   in zwei aufeinanderfolgenden Läufen – zwei Ursachen gefunden und gefixt
   (`splitByParcel`, dann `output` ist eine Liste statt eines Einzelobjekts; Commits
-  `b38fc55`/`b8aed2e`) – **Re-Test nach dem nächsten Deploy steht noch aus**
+  `b38fc55`/`b8aed2e`)
 - `bench migrate`-Grundlagen: Custom Fields, Abrechnungsnummern-Tabelle, DocTypes korrekt angelegt
 - **Deutsche Post / Internetmarke**: Auth (`POST /user`) und Marken-Erstellung
   (Vorschau + Produktiv, `POST /app/shoppingcart/pdf`) live verifiziert
+- **Sicherheitsreview** (Rechteprüfungen, Race-Condition-Schutz bei `create_label()`,
+  HTML-Escaping von Carrier-Antworten, SSRF-Schutz) umgesetzt und deployed – der dabei
+  zunächst übersehene Absturz bei neuen/ungespeicherten Versandsendungen wurde gefunden
+  und gefixt (Commit `6e0d9c8`), Fix vom User am Produktivsystem bestätigt
+- **Manuelle Versandsendung**: Empfänger aus dem Kundenstamm (Kunde → Adresse) statt
+  Handeingabe übernehmbar
 
-⚠️ **Noch offen**
-- DPD-Label-Fix erneut testen (siehe oben)
-- Deutsche Post: Portokasse-Aufladung + DATEV-Journalbuchungen implementiert,
-  aber noch nicht live durchprobiert (echtes Geld – bewusst nicht selbst getestet)
+⚠️ **Noch nicht live getestet** (Code deployt/validiert, aber noch nicht durchgeklickt)
+- DPD-Abholtag-Steuerung + „Für die ganze Woche buchen"
+- DHL-Retoure (`services.dhlRetoure`, Rücksendeetikett)
+- DHL Abholauftrag (Paket DE Abholen v3) – „Beliebige Adresse" und „Vereinbarter Abholort"
+- Deutsche Post: Portokasse-Aufladung, DATEV-Journalbuchungen, Saldo-Abgleich, Anfangsguthaben buchen
 - Mehrmarken-Auflösung (`Versandabsender`) mit mehr als einer Marke, automatischer Briefkopf
 - Sendungsverfolgung: Hintergrund-Job, Statusabgleich, Benachrichtigungen, Arbeitsfläche
-  (Code ist deployt, aber noch nie live durchgeklickt)
+
+Noch gar nicht begonnen: **Drucker-pro-Dokumenttyp-Auswahl** (z. B. eigener Drucker für
+Versandetiketten vs. Zollinhaltserklärung) inkl. eines lokalen Druck-Agenten/-Servers –
+Konzept besprochen, Umsetzung wartet auf die Entscheidung, welches Gerät den Agenten hostet.
 
 Siehe [„Testvorgehen"](#testvorgehen) unten für die geplante Reihenfolge.
 
@@ -57,6 +70,8 @@ Siehe [„Testvorgehen"](#testvorgehen) unten für die geplante Reihenfolge.
 | **Versandabsender** | Marken-/Absenderprofil: Adresse, Retoure, Briefkopf, DHL-Abrechnungsnummern je Produkt |
 | **Versandsendung** (submittable) | Sendung zu einem Lieferschein: Carrier, Absender, Empfänger, Maße, Services, Mehrcolli, Etikett-PDF, Sendungsnummer, **Tracking-Status + Verlauf**, API-Protokoll |
 | **Versandsendung Paket** (Child) | Einzelne Colli bei Mehrpaketsendungen (DHL/DPD) |
+| **DHL Abholauftrag** (+ Child *DHL Abholauftrag Sendung*) | Abholung bei DHL beauftragen/stornieren/Status abfragen – unabhängig von einzelnen Versandsendungen |
+| **DHL Abholort** | Stammdaten „vereinbarter Abholort" (Sync via `GET /locations`) |
 | Button **„Versandetikett erstellen"** im *Lieferschein* | Carrier wählen → Versandsendung anlegen, API rufen, PDF anhängen & öffnen |
 | Custom Fields am *Lieferschein* | `Versandsendung`, `Sendungsnummer`, `Sendungsverfolgung` |
 
@@ -163,8 +178,8 @@ Versandsendungen:
   API-Protokoll der Versandsendung).
 
 Noch nicht live getestet (Feature ist neu bei DHL im Developer-Portal freigeschaltet
-worden) – vor dem ersten produktiven Einsatz einmal im Sandbox- oder mit „Beliebige
-Adresse" vorsichtig gegen die echte API prüfen.
+worden) – kann aber gefahrlos gegen die DHL-Sandbox durchgespielt werden, da dort
+keine echten Daten/Kosten anfallen.
 
 ---
 
@@ -278,6 +293,14 @@ bei einem Fehler dort weitermachen, wo er auftrat:
     Motive, siehe unten), dann eine Versandsendung im Modus **Vorschau** anlegen
     (kostenlos) und erst danach, mit automatisch/bewusst gesetztem
     Frankierbetrag, im Modus **Produktiv** (siehe oben).
+12. **Neue Features (alle gefahrlos gegen Sandbox/Testzugänge, noch nicht durchgeklickt):**
+    DPD-Versandsendung mit Abholtag „Morgen"/„Wunschtag" erstellen und prüfen, dass
+    `shippingDate` beim Carrier ankommt; „Für die ganze Woche buchen" testen (5 Kopien
+    erwartet); an einer DHL-Versandsendung „DHL-Retoure" ankreuzen und prüfen, dass ein
+    zweites Label unter „Retourenlabel öffnen" landet; einen **DHL Abholauftrag** anlegen
+    (beide Abholarten) und „Abholung beauftragen" → „Status abfragen" → „Stornieren"
+    durchspielen; in **Deutsche Post Settings** „Portokasse aufladen" und (bei aktivierten
+    Journalbuchungen) „Saldo abgleichen" testen.
 
 **Wenn etwas fehlschlägt:** Fehlermeldung/Traceback (Desk → *Error Log*, oder die
 Meldung aus dem `frappe.throw`) hierher kopieren – das genügt meist, um den Fehler
@@ -472,17 +495,22 @@ versand_integration/
 │   ├── registry.py      # Carrier-Name -> Klasse
 │   ├── exceptions.py    # CarrierError / CarrierConfigError / CarrierAPIError
 │   ├── dhl/             # Parcel DE Shipping v2 (REST): constants, client, mapper, carrier
+│   │                    # + pickup_mapper.py (Paket DE Abholen v3 Payload-Bau)
 │   ├── dpd/             # DE WebConnect (SOAP via zeep): constants, client, mapper, carrier
+│   │                    # + pickup.py (Abholtag-Auflösung: Morgen/Übermorgen/Wunschtag/Werktage)
 │   └── deutsche_post/   # Internetmarke REST (Developer Portal): constants, client, mapper, carrier – Auth + Marken-Erstellung
+│   │                    # + accounting.py (DATEV-Journalbuchungen Kauf/Aufladung/Anfangsguthaben)
 │   └── */tracking.py    # Sendungsverfolgung je Carrier -> TrackingResult
-├── absender.py          # Versandabsender/Marke -> ResolvedAbsender (Adresse, DHL-Abr.-Nr.)
+├── absender.py          # Versandabsender/Marke -> ResolvedAbsender (Adresse, DHL-Abr.-Nr., Retourenadresse)
 ├── tracking.py          # scheduler_events.hourly_long: poll_open_shipments()
-├── api.py               # whitelisted: create_shipment_from_delivery_note(carrier, versandabsender)
+├── api.py               # whitelisted: create_shipment_from_delivery_note(carrier, versandabsender),
+│                         # create_week_shipments(source, count) – 5x Versandsendung für DPD-Wochenbuchung
 ├── setup/install.py     # Custom Fields (Versandabsender, Tracking-Status), Settings-Singletons
 ├── setup/letter_head.py # Briefkopf aus Versandabsender auf SO/DN/SI
 ├── utils/credentials.py # .secrets/*.json -> Settings (nur self-hosted, zum Testen)
 └── versand_integration/…            # Settings (DHL/DPD/DP + Versand Integration Settings),
                                      # Versandabsender, Versandsendung(+Paket, +Tracking Event),
+                                     # DHL Abholauftrag(+Sendung)/DHL Abholort,
                                      # Workspace „Versand" + Number Cards
 ```
 
