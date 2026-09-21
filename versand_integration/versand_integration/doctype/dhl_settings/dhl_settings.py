@@ -15,6 +15,12 @@ class DHLSettings(Document):
 
 	@frappe.whitelist()
 	def test_connection(self):
+		# Loest einen echten (wenn auch kostenlosen) API-Aufruf mit den
+		# hinterlegten Zugangsdaten aus - wie jede andere aendernde Aktion an
+		# den Settings ans Schreibrecht binden, nicht nur ans Leserecht, das
+		# eine whitelisted Dokumentmethode von sich aus verlangt.
+		self.check_permission("write")
+
 		from versand_integration.carriers.dhl.client import DHLClient
 
 		try:
@@ -30,6 +36,8 @@ class DHLSettings(Document):
 		"""Holt GET /locations (vereinbarte Abholorte) und spiegelt sie als
 		'DHL Abholort'-Datensätze, damit sie im Abholauftrag als Link-Feld
 		auswählbar sind statt roher Orts-IDs."""
+		self.check_permission("write")  # legt Dokumente an (DHL Abholort)
+
 		from versand_integration.carriers.dhl.client import DHLClient
 
 		try:

@@ -6,6 +6,8 @@ Für Sandbox-Paketnummern liegen i. d. R. keine Tracking-Daten vor.
 
 from __future__ import annotations
 
+from urllib.parse import quote
+
 import requests
 from frappe import _
 from frappe.utils import get_datetime
@@ -38,7 +40,12 @@ def _classify(text: str) -> str:
 class DPDTracking:
 	def track(self, tracking_number: str) -> base.TrackingResult:
 		try:
-			resp = requests.get(_URL.format(number=tracking_number), timeout=_TIMEOUT)
+			# quote(): die Nummer kommt zwar vom Carrier, steht aber in einem
+			# Dokumentfeld, das per REST-API beschreibbar ist - ohne Kodierung
+			# koennten "/" oder "?" darin den angefragten Pfad veraendern.
+			resp = requests.get(
+				_URL.format(number=quote(str(tracking_number), safe="")), timeout=_TIMEOUT
+			)
 		except requests.RequestException as exc:
 			raise CarrierAPIError(_("DPD-Tracking nicht erreichbar: {0}").format(exc)) from exc
 

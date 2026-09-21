@@ -1,0 +1,57 @@
+# Statische Prüfungen ohne Frappe-Bench: Lint, Syntax und DocType-JSONs.
+# Die eigentlichen Unit-Tests brauchen eine Frappe-Site und laufen deshalb
+# lokal/auf der Bench (`bench --site <site> run-tests --app versand_integration`).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Ruff installieren
+        run: pip install ruff
+
+      - name: Ruff (Konfiguration in pyproject.toml)
+        run: ruff check versand_integration
+
+      - name: Syntax aller Python-Dateien
+        run: python -m compileall -q versand_integration
+
+      - name: DocType-JSONs validieren (gültig + field_order vollständig)
+        run: |
+          python - <<'PY'
+          import glob, json, sys
+
+          fehler = []
+          for pfad in glob.glob("versand_integration/**/*.json", recursive=True):
+              try:
+                  daten = json.load(open(pfad, encoding="utf-8"))
+              except ValueError as exc:
+                  fehler.append(f"{pfad}: ungültiges JSON ({exc})")
+                  continue
+              if daten.get("doctype") != "DocType" or daten.get("field_order") is None:
+                  continue
+              order = daten["field_order"]
+              felder = [f["fieldname"] for f in daten["fields"]]
+              fehlend = [f for f in order if f not in felder]
+              zusatz = [f for f in felder if f not in order]
+              if fehlend or zusatz:
+                  fehler.append(
+                      f"{daten['name']}: in field_order aber nicht in fields: {fehlend}; "
+                      f"in fields aber nicht in field_order: {zusatz}"
+                  )
+
+          for zeile in fehler:
+              print(zeile)
+          sys.exit(1 if fehler else 0)
+          PY

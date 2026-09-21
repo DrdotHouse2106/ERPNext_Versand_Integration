@@ -33,6 +33,9 @@ class DeutschePostSettings(Document):
 
 	@frappe.whitelist()
 	def test_connection(self):
+		# Echter Login (und gibt das Portokasse-Guthaben zurueck) -> Schreibrecht.
+		self.check_permission("write")
+
 		from versand_integration.carriers.deutsche_post.client import DPClient
 
 		try:
@@ -49,6 +52,8 @@ class DeutschePostSettings(Document):
 		spiegelt sie als 'Deutsche Post Seitenformat/Produkt/Motiv'-Datensätze,
 		damit sie im Formular als lesbare Auswahl (Link-Felder) zur Verfügung
 		stehen statt roher IDs/Codes."""
+		self.check_permission("write")  # legt Dokumente an (Seitenformat/Produkt/Motiv)
+
 		import json
 
 		from versand_integration.carriers.deutsche_post import catalog_sync
@@ -113,6 +118,8 @@ class DeutschePostSettings(Document):
 		nützlich um zu prüfen, ob die Portokasse wirklich ausschließlich über
 		diese App genutzt wurde (Voraussetzung für die automatischen
 		Journalbuchungen, siehe Warnhinweis oben)."""
+		# Fragt Portokasse-Guthaben und Kontensaldo ab -> Finanzdaten, Schreibrecht.
+		self.check_permission("write")
 		if not self.datev_buchungskonto:
 			frappe.throw(_("Kein Buchungskonto (Portokasse) in den Settings hinterlegt."))
 

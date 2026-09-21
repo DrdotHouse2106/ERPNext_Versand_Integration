@@ -83,7 +83,7 @@
  ],
  "fields": [
   {"fieldname": "naming_series", "fieldtype": "Select", "label": "Nummernkreis", "options": "VS-.YYYY.-", "default": "VS-.YYYY.-", "reqd": 1, "print_hide": 1},
-  {"fieldname": "delivery_note", "fieldtype": "Link", "label": "Lieferschein", "options": "Delivery Note", "in_list_view": 1, "in_standard_filter": 1},
+  {"fieldname": "delivery_note", "fieldtype": "Link", "label": "Lieferschein", "options": "Delivery Note", "in_list_view": 1, "in_standard_filter": 1, "search_index": 1},
   {"fieldname": "customer", "fieldtype": "Link", "label": "Kunde", "options": "Customer", "read_only_depends_on": "eval:doc.delivery_note", "description": "Nur bei Sendungen ohne Lieferschein wählbar – mit Lieferschein wird der Kunde von dort übernommen. Adresse unten über 'Kundenadresse' aus dem Kundenstamm ziehen."},
   {"fieldname": "customer_address", "fieldtype": "Link", "label": "Kundenadresse", "options": "Address", "depends_on": "eval:doc.customer && !doc.delivery_note", "description": "Übernimmt beim Auswählen die Empfängerdaten unten (überschreibt sie)."},
   {"fieldname": "customer_name", "fieldtype": "Data", "label": "Kundenname", "fetch_from": "customer.customer_name", "read_only": 1, "hidden": 1},

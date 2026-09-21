@@ -11,16 +11,22 @@ from versand_integration.carriers.exceptions import CarrierAPIError, CarrierConf
 _TOKEN_CACHE_PREFIX = "versand_integration:dpd:token:"
 
 
+# Lebensdauer des WSDL-Caches. Die WSDLs aendern sich praktisch nie, sind aber
+# gross - ohne Cache laedt jeder Login und jedes Etikett sie erneut herunter.
+_WSDL_CACHE_TTL = 24 * 3600
+
+
 def _zeep():
 	try:
-		import zeep  # noqa: PLC0415
-		from zeep import Settings  # noqa: PLC0415
-		from zeep.transports import Transport  # noqa: PLC0415
+		import zeep
+		from zeep import Settings
+		from zeep.cache import InMemoryCache
+		from zeep.transports import Transport
 	except ImportError as exc:  # pragma: no cover
 		raise CarrierConfigError(
 			_("Python-Paket 'zeep' ist nicht installiert (für DPD SOAP benötigt).")
 		) from exc
-	return zeep, Transport, Settings
+	return zeep, Transport, Settings, InMemoryCache
 
 
 class DPDClient:
@@ -31,6 +37,7 @@ class DPDClient:
 		self.delis_id = (settings.delis_id or "").strip()
 		self.password = (settings.get_password("password", raise_exception=False) or "").strip()
 		self._auth = None  # dict: delisId, authToken, depot, customerUid
+		self._services = {}  # Pfad -> zeep.Client, pro Instanz wiederverwendet
 
 	# --------------------------------------------------------------- helpers
 	def _check_config(self):
@@ -38,8 +45,15 @@ class DPDClient:
 			raise CarrierConfigError(_("DPD Settings: DELIS-ID und Passwort erforderlich."))
 
 	def _service(self, path: str):
-		zeep, Transport, Settings = _zeep()
-		transport = Transport(timeout=60, operation_timeout=60)
+		if path in self._services:
+			return self._services[path]
+
+		zeep, Transport, Settings, InMemoryCache = _zeep()
+		# Mit Cache: das WSDL (ShipmentService ist gross) wurde sonst bei JEDEM
+		# Login und JEDEM storeOrders neu geladen - zwei zusaetzliche Roundtrips
+		# pro Etikett. InMemoryCache statt SqliteCache, weil der prozessweit
+		# geteilt wird und keine Schreibrechte im Temp-Verzeichnis braucht.
+		transport = Transport(timeout=60, operation_timeout=60, cache=InMemoryCache(timeout=_WSDL_CACHE_TTL))
 		# xml_huge_tree bewusst NICHT gesetzt: lxml-Standardlimits (Schutz vor
 		# XML-Bomben/übergroßen Antworten) reichen für normale Label-Antworten
 		# mit einem eingebetteten Base64-PDF, es gab keinen dokumentierten Grund,
@@ -47,9 +61,11 @@ class DPDClient:
 		settings = Settings(strict=False)
 		wsdl = f"{self.base}{path}?wsdl"
 		try:
-			return zeep.Client(wsdl=wsdl, transport=transport, settings=settings)
-		except Exception as exc:  # noqa: BLE001
+			client = zeep.Client(wsdl=wsdl, transport=transport, settings=settings)
+		except Exception as exc:
 			raise CarrierAPIError(_("DPD WSDL nicht ladbar ({0}): {1}").format(wsdl, exc)) from exc
+		self._services[path] = client
+		return client
 
 	# ----------------------------------------------------------------- login
 	def _cache_key(self):
@@ -72,7 +88,7 @@ class DPDClient:
 				password=self.password,
 				messageLanguage=C.MESSAGE_LANGUAGE,
 			)
-		except Exception as exc:  # noqa: BLE001
+		except Exception as exc:
 			raise CarrierAPIError(_("DPD Login fehlgeschlagen: {0}").format(_fault(exc))) from exc
 
 		self._auth = {
@@ -114,7 +130,7 @@ class DPDClient:
 				printOptions=print_options,
 				order=[order],
 			)
-		except Exception as exc:  # noqa: BLE001
+		except Exception as exc:
 			# Auth-Token evtl. abgelaufen -> einmal neu einloggen und wiederholen.
 			if not self._auth or "token" in str(exc).lower():
 				frappe.cache().delete_value(self._cache_key())
@@ -125,7 +141,7 @@ class DPDClient:
 						printOptions=print_options,
 						order=[order],
 					)
-				except Exception as exc2:  # noqa: BLE001
+				except Exception as exc2:
 					raise CarrierAPIError(
 						_("DPD storeOrders fehlgeschlagen: {0}").format(_fault(exc2))
 					) from exc2
@@ -138,7 +154,7 @@ class DPDClient:
 
 
 def _fault(exc) -> str:
-	from zeep.exceptions import Fault  # noqa: PLC0415
+	from zeep.exceptions import Fault
 
 	if isinstance(exc, Fault):
 		return exc.message or str(exc)

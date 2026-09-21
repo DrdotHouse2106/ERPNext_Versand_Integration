@@ -46,7 +46,9 @@ class ResolvedAbsender:
 	def require_address(self, carrier: str):
 		if not (self.name1 and self.postal_code and self.city):
 			raise CarrierConfigError(
-				_("Absenderadresse unvollständig (Name, PLZ, Ort) – Quelle: {0}").format(self.source)
+				_("{0}: Absenderadresse unvollständig (Name, PLZ, Ort) – Quelle: {1}").format(
+					carrier, self.source
+				)
 			)
 
 	def dhl_billing_number(self, product_code: str | None) -> str | None:
@@ -80,7 +82,16 @@ class ResolvedAbsender:
 
 def resolve(shipment) -> ResolvedAbsender:
 	name = getattr(shipment, "versandabsender", None)
-	if not name:
+	if name:
+		# Ein deaktivierter Absender wird nur ueber den Standard-Pfad unten
+		# herausgefiltert. Ist er direkt an der Sendung hinterlegt (haeufig vom
+		# Kunden/Lieferschein geerbt), wuerde sonst still mit einer Marke
+		# etikettiert, die jemand bewusst stillgelegt hat.
+		if frappe.db.get_value("Versandabsender", name, "disabled"):
+			raise CarrierConfigError(
+				_("Versandabsender '{0}' ist deaktiviert – bitte einen anderen wählen.").format(name)
+			)
+	else:
 		name = frappe.db.get_value("Versandabsender", {"is_default": 1, "disabled": 0}, "name")
 	if name:
 		return _from_doc(frappe.get_cached_doc("Versandabsender", name))
