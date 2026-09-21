@@ -9,6 +9,41 @@ frappe.ui.form.on("Versandsendung", {
 			filters: { link_doctype: "Customer", link_name: frm.doc.customer },
 		}));
 
+		if (
+			frm.doc.carrier === "DPD" &&
+			!frm.is_new() &&
+			frm.doc.docstatus === 0 &&
+			frm.doc.status !== "Etikett erstellt"
+		) {
+			frm.add_custom_button(__("Für die ganze Woche buchen"), () => {
+				frappe.confirm(
+					__(
+						"Legt 5 Kopien dieser Sendung an (nächste 5 Werktage, je ein eigener Abholtag) und erstellt direkt die Etiketten. Fortfahren?"
+					),
+					() => {
+						frappe.call({
+							method: "versand_integration.api.create_week_shipments",
+							args: { source: frm.doc.name },
+							freeze: true,
+							freeze_message: __("Erstelle Sendungen für die ganze Woche …"),
+						}).then((r) => {
+							const rows = r.message || [];
+							const lines = rows.map((row) =>
+								row.error
+									? `${row.date}: ${__("Fehler")} – ${frappe.utils.escape_html(row.error)}`
+									: `${row.date}: ${row.name} (${row.shipment_number || row.status})`
+							);
+							frappe.msgprint({
+								title: __("Wochen-Sendungen erstellt"),
+								indicator: rows.some((r) => r.error) ? "orange" : "green",
+								message: lines.join("<br>"),
+							});
+						});
+					}
+				);
+			});
+		}
+
 		if (frm.doc.docstatus === 0 && frm.doc.status !== "Etikett erstellt") {
 			frm.add_custom_button(__("Etikett erstellen"), () => {
 				frm.call({
@@ -33,6 +68,11 @@ frappe.ui.form.on("Versandsendung", {
 
 		if (frm.doc.label_file) {
 			frm.add_custom_button(__("Etikett öffnen"), () => window.open(frm.doc.label_file, "_blank"));
+		}
+		if (frm.doc.return_label_file) {
+			frm.add_custom_button(__("Retourenlabel öffnen"), () =>
+				window.open(frm.doc.return_label_file, "_blank")
+			);
 		}
 		if (frm.doc.tracking_url) {
 			frm.add_custom_button(__("Sendung verfolgen"), () => window.open(frm.doc.tracking_url, "_blank"));

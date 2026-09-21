@@ -203,6 +203,12 @@ class Versandsendung(Document):
 			self.label_file = self._save_label(
 				result.label_b64, result.label_mimetype, suffix=result.shipment_number
 			)
+		if result.return_label_b64:
+			self.return_label_file = self._save_label(
+				result.return_label_b64,
+				result.return_label_mimetype,
+				suffix=f"Retoure-{result.shipment_number}",
+			)
 
 		for pkg, res_pkg in zip(self.packages or [], result.packages, strict=False):
 			pkg.shipment_number = res_pkg.shipment_number

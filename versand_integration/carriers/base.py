@@ -26,6 +26,10 @@ class LabelResult:
 	packages: list[LabelPackage] = field(default_factory=list)
 	raw_request: dict | None = None
 	raw_response: dict | None = None
+	# Nur DHL Retoure: separates Rücksendeetikett, das zusammen mit dem
+	# Versandlabel erzeugt wird. Andere Carrier lassen das leer.
+	return_label_b64: str | None = None
+	return_label_mimetype: str = "application/pdf"
 
 
 # --- Sendungsverfolgung -------------------------------------------------

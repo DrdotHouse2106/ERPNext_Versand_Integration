@@ -64,3 +64,40 @@ def get_shipment_for_delivery_note(delivery_note: str):
 		"name",
 	)
 	return name
+
+
+@frappe.whitelist()
+def create_week_shipments(source: str, create_label: int = 1, count: int = 5):
+	"""Dupliziert eine (i. d. R. DPD-)Versandsendung für die nächsten `count`
+	Werktage (Mo-Fr, Wochenende übersprungen) mit je eigenem Abholtag
+	(`dpd_pickup_date`) und erstellt optional direkt die Etiketten.
+
+	Aufruf vom Button »Für die ganze Woche buchen« an der Versandsendung.
+	Ein fehlgeschlagener Tag bricht die übrigen nicht ab - jeder Tag wird
+	einzeln zurückgemeldet.
+	"""
+	from versand_integration.carriers.dpd.pickup import next_business_days
+
+	src = frappe.get_doc("Versandsendung", source)
+	src.check_permission("read")
+	if not frappe.has_permission("Versandsendung", "create"):
+		frappe.throw(_("Keine Berechtigung, Versandsendungen anzulegen."), frappe.PermissionError)
+
+	results = []
+	for day in next_business_days(cint(count) or 5):
+		new_doc = frappe.copy_doc(src)
+		new_doc.dpd_pickup_option = "Wunschtag"
+		new_doc.dpd_pickup_date = day
+		new_doc.insert()
+
+		entry = {"name": new_doc.name, "date": str(day)}
+		if cint(create_label):
+			try:
+				new_doc.create_label()
+			except Exception as exc:  # noqa: BLE001 - create_label() throws ValidationError, nicht CarrierError direkt (siehe dessen eigenen Fehlerpfad)
+				entry["error"] = str(exc)
+		entry["status"] = new_doc.status
+		entry["shipment_number"] = new_doc.shipment_number
+		results.append(entry)
+
+	return results

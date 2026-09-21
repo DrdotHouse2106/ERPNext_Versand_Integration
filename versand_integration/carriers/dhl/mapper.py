@@ -110,7 +110,19 @@ def _consignee_block(doc):
 INTERNATIONAL_PRODUCTS = {"V53WPAK", "V54EPAK", "V66WPI"}
 
 
-def _services(doc, settings, product_code, consignee_country_alpha3):
+def _retoure_address_block(absender) -> dict:
+	ret = absender.return_address()
+	street = ret["street"]
+	house = ret["house_number"]
+	if street and not house:
+		street, house = split_street(street)
+	return _address_block(
+		ret["name1"], ret["name2"], street, house, None,
+		ret["postal_code"], ret["city"], ret["country"] or "DE", None, None,
+	)
+
+
+def _services(doc, settings, product_code, consignee_country_alpha3, absender=None):
 	services = {}
 
 	premium = bool(doc.service_premium)
@@ -147,6 +159,21 @@ def _services(doc, settings, product_code, consignee_country_alpha3):
 		if getattr(doc, "cod_account_reference", None):
 			cod["accountReference"] = doc.cod_account_reference
 		services["cashOnDelivery"] = cod
+
+	if doc.service_dhl_retoure and absender is not None:
+		return_billing = absender.dhl_billing_number_return
+		if not return_billing:
+			raise CarrierConfigError(
+				_(
+					"DHL Retoure: keine Retouren-Abrechnungsnummer (Verfahren 08) hinterlegt "
+					"– im Versandabsender '{0}' oder als Fallback in den DHL Settings eintragen."
+				).format(absender.source)
+			)
+		retoure = {"billingNumber": return_billing, "returnAddress": _retoure_address_block(absender)}
+		ref = (doc.reference or doc.name or "").strip()
+		if len(ref) >= 6:
+			retoure["refNo"] = ref[:50]
+		services["dhlRetoure"] = retoure
 	return services
 
 
@@ -177,7 +204,7 @@ def build_order_payload(settings, doc, absender) -> dict:
 
 	shipper = _shipper_block(absender)
 	consignee = _consignee_block(doc)
-	services = _services(doc, settings, product, consignee.get("country"))
+	services = _services(doc, settings, product, consignee.get("country"), absender)
 	ship_date = today()
 	profile = absender.dhl_profile or settings.profile or C.DEFAULT_PROFILE
 
