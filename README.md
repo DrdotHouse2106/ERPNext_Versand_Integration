@@ -1,5 +1,7 @@
 # ERPNext Versand Integration
 
+*[English version](README.en.md)*
+
 Frappe-/ERPNext-App zur Erzeugung von **Versandetiketten direkt über die Carrier-APIs** –
 ohne Drittanbieter-Middleware.
 
@@ -9,7 +11,8 @@ ohne Drittanbieter-Middleware.
 | **DPD** | DE WebConnect (SOAP: LoginService V2.0 + ShipmentService V4.5, via `zeep`) | Login + Sendung erstellen live verifiziert; Abholtag-Steuerung (shippingDate) implementiert |
 | **Deutsche Post** | Internetmarke – neue REST-API „Post DE Internetmarke" (DHL Developer Portal, kein Partnervertrag mehr) | ✅ Marken-Erstellung (Vorschau/Produktiv) live verifiziert; Portokasse-Aufladung + optionale DATEV-Journalbuchungen implementiert, noch nicht live getestet |
 
-Geschrieben für **Frappe / ERPNext v15–v16**. Python-Abhängigkeit: `zeep` (SOAP, für DPD).
+Geschrieben und getestet für **Frappe / ERPNext v16** (v15-Kompatibilität nicht
+geprüft). Python-Abhängigkeit: `zeep` (SOAP, für DPD).
 
 > **Repo** heißt `ERPNext_Versand_Integration`, die **Frappe-App** heißt
 > `versand_integration` (Python-Modulname). Frappe Cloud / `bench` lesen den
@@ -19,12 +22,16 @@ Geschrieben für **Frappe / ERPNext v15–v16**. Python-Abhängigkeit: `zeep` (S
 
 ## Status: Testphase (Stand 21.09.2026)
 
-Alle drei Carrier hängen aktuell an Test-/Sandbox-Zugängen (DHL Parcel DE Shipping
-Sandbox, DPD WebConnect Stage, eine Deutsche-Post-Portokasse der „Entwickler"-Klasse
-mit fiktivem Guthaben) – es sind nirgends echte Kundendaten oder echtes Geld im Spiel,
-Live-Tests gegen alle drei APIs sind also gefahrlos möglich. Getestet wurde bisher per
-API mit freistehenden, danach wieder gelöschten Test-Versandsendungen (kein
-Kunde/Lieferschein nötig, keine Spuren im System).
+Alle drei Carrier hängen in der aktuellen Testinstanz des Maintainers an
+Test-/Sandbox-Zugängen (DHL Parcel DE Shipping Sandbox, DPD WebConnect Stage,
+eine Deutsche-Post-Portokasse der „Entwickler"-Klasse mit fiktivem Guthaben) –
+es sind nirgends echte Kundendaten oder echtes Geld im Spiel, Live-Tests gegen
+alle drei APIs sind also gefahrlos möglich. Getestet wurde bisher per API mit
+freistehenden, danach wieder gelöschten Test-Versandsendungen (kein
+Kunde/Lieferschein nötig, keine Spuren im System). **Das sind die Testzugänge
+des Maintainers zum Entwickeln/Testen dieser App** – jeder andere Nutzer trägt
+in den jeweiligen Settings seine eigenen, echten Zugangsdaten ein (Sandbox oder
+Produktiv, siehe „Konfiguration" unten).
 
 ✅ **Live gegen Sandbox/Testzugänge verifiziert**
 - **DHL**: „Verbindung testen" (OAuth2), **Etikett erstellen** (echte Sendungsnummer,
@@ -246,6 +253,11 @@ bench build --app versand_integration
 6. In der Sandbox werden je Produkt die offiziellen Test-Abrechnungsnummern
    verwendet, wenn keine hinterlegt ist.
 7. **„Verbindung testen"** klicken → macht einen `validate=true`-Aufruf.
+8. Für **DHL Abholauftrag** (Pickup-API) muss im DHL Developer Portal zusätzlich
+   zur Shipping-API einmalig die API **„Paket DE Abholen"** zur App hinzugefügt
+   werden – sonst antwortet `POST /orders` der Pickup-API mit einem
+   Berechtigungsfehler, obwohl dieselben API Key/Secret wie beim Versand
+   funktionieren.
 
 ### Testzugangsdaten schnell laden (nur self-hosted)
 
@@ -320,9 +332,14 @@ Aufrufe also nicht selbst auslösen.
 | Abrechnungsnr. `V01PAK` | `33333333330102` (mit Services), `…0101` (ohne) |
 | Profil | `STANDARD_GRUPPENPROFIL` |
 | Druckformat | `910-300-700` (A4) |
+| Pickup-API Basis-URL (Sandbox) | `https://api-sandbox.dhl.com/parcel/de/transportation/pickup/v3` |
+| Pickup-API Basis-URL (Produktiv) | `https://api-eu.dhl.com/parcel/de/transportation/pickup/v3` |
 
 Leere Felder für GKP-Benutzer/Passwort und Abrechnungsnummer werden in der
 Sandbox automatisch mit den obigen Testwerten belegt (je nach `auth_method`).
+Die Pickup-API (`DHL Abholauftrag`, siehe oben) nutzt denselben OAuth2-Token
+wie die Shipping-API – kein separater Login/Key nötig, nur die Basis-URL
+unterscheidet sich.
 
 In den Auswahlfeldern stehen lesbare Namen; die App übersetzt sie in die
 DHL-Codes: DHL Paket (national) = `V01PAK`, DHL Paket International = `V53WPAK`,
