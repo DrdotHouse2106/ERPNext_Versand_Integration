@@ -6,6 +6,7 @@ from frappe import _
 from frappe.utils import flt
 
 from versand_integration.carriers.dpd import constants as C
+from versand_integration.carriers.dpd import pickup as C_pickup
 from versand_integration.carriers.exceptions import CarrierConfigError
 
 
@@ -95,6 +96,11 @@ def build_order(settings, doc, absender, depot: str) -> dict:
 		"recipient": recipient,
 		"softwareVersion": C.SOFTWARE_VERSION,
 	}
+	shipping_date = C_pickup.resolve_shipping_date(
+		getattr(doc, "dpd_pickup_option", None), getattr(doc, "dpd_pickup_date", None)
+	)
+	if shipping_date:
+		general["shippingDate"] = shipping_date
 	ref = (doc.reference or doc.delivery_note or doc.name or "").strip()
 	if ref:
 		general["mpsCustomerReferenceNumber1"] = ref[:35]

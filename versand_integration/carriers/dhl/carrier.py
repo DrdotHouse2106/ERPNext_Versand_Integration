@@ -45,6 +45,7 @@ class DHLCarrier(BaseCarrier):
 			)
 
 		main = packages[0]
+		return_label = (items[0].get("returnLabel") or {}) if items else {}
 		return LabelResult(
 			shipment_number=main.shipment_number,
 			tracking_number=main.tracking_number,
@@ -54,6 +55,8 @@ class DHLCarrier(BaseCarrier):
 			packages=packages,
 			raw_request=payload,
 			raw_response=response,
+			return_label_b64=return_label.get("b64"),
+			return_label_mimetype="application/pdf" if client.doc_format == "PDF" else "text/plain",
 		)
 
 	def track(self, shipment):

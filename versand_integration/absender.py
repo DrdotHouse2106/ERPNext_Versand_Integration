@@ -33,6 +33,13 @@ class ResolvedAbsender:
 	dhl_profile: str | None = None
 	dhl_billing_number_return: str | None = None
 	dpd_sending_depot: str | None = None
+	return_same_as_sender: bool = True
+	return_name1: str | None = None
+	return_street: str | None = None
+	return_house_number: str | None = None
+	return_postal_code: str | None = None
+	return_city: str | None = None
+	return_country: str | None = None
 	_dhl_billing_by_code: dict = field(default_factory=dict)
 	_dhl_billing_fallback: str | None = None
 
@@ -46,6 +53,29 @@ class ResolvedAbsender:
 		if product_code and product_code in self._dhl_billing_by_code:
 			return self._dhl_billing_by_code[product_code]
 		return self._dhl_billing_fallback
+
+	def return_address(self) -> dict:
+		"""Retourenadresse – entweder identisch zur Absenderadresse oder die
+		eigens hinterlegte (Versandabsender.return_same_as_sender)."""
+		if self.return_same_as_sender or not self.return_name1:
+			return {
+				"name1": self.name1,
+				"name2": self.name2,
+				"street": self.street,
+				"house_number": self.house_number,
+				"postal_code": self.postal_code,
+				"city": self.city,
+				"country": self.country,
+			}
+		return {
+			"name1": self.return_name1,
+			"name2": None,
+			"street": self.return_street,
+			"house_number": self.return_house_number,
+			"postal_code": self.return_postal_code,
+			"city": self.return_city,
+			"country": self.return_country or self.country,
+		}
 
 
 def resolve(shipment) -> ResolvedAbsender:
@@ -71,6 +101,14 @@ def _dhl_billing_from_settings() -> tuple[dict, str | None]:
 	return by_code, (s.billing_number or None)
 
 
+def _dhl_billing_return_from_settings() -> str | None:
+	try:
+		s = frappe.get_cached_doc("DHL Settings")
+	except frappe.DoesNotExistError:
+		return None
+	return getattr(s, "billing_number_return", None) or None
+
+
 def _from_doc(doc) -> ResolvedAbsender:
 	# Basis: globale Nummern aus den DHL Settings, dann Marken-Overrides drüber.
 	by_code, settings_fallback = _dhl_billing_from_settings()
@@ -94,8 +132,15 @@ def _from_doc(doc) -> ResolvedAbsender:
 		email=doc.email,
 		phone=doc.phone,
 		dhl_profile=doc.dhl_profile or None,
-		dhl_billing_number_return=doc.dhl_billing_number_return or None,
+		dhl_billing_number_return=doc.dhl_billing_number_return or _dhl_billing_return_from_settings(),
 		dpd_sending_depot=doc.dpd_sending_depot or None,
+		return_same_as_sender=bool(doc.return_same_as_sender),
+		return_name1=doc.return_name1,
+		return_street=doc.return_street,
+		return_house_number=doc.return_house_number,
+		return_postal_code=doc.return_postal_code,
+		return_city=doc.return_city,
+		return_country=doc.return_country,
 		_dhl_billing_by_code=by_code,
 		_dhl_billing_fallback=next(iter(overrides.values()), None) or settings_fallback,
 	)
@@ -145,6 +190,7 @@ def _from_settings(carrier: str) -> ResolvedAbsender:
 		email=s.shipper_email,
 		phone=s.shipper_phone,
 		dhl_profile=s.profile or None,
+		dhl_billing_number_return=_dhl_billing_return_from_settings(),
 		_dhl_billing_by_code=by_code,
 		_dhl_billing_fallback=fallback,
 	)
