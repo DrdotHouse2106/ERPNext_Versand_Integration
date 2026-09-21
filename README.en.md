@@ -55,6 +55,14 @@ other user enters their own real credentials in the respective settings
 - **Manual shipment**: recipient can be pulled from the customer master data
   (customer → address) instead of typing it in by hand
 
+🔧 **Second review round** (statically checked, not yet clicked through): cap +
+carrier check for the week booking, lock against duplicate shipments per delivery note,
+write-permission checks for the settings actions, base64 labels removed from the API
+log, cancellation status now actually persisted (`db_set`), DHL token cache keyed by
+environment/credentials with a 401 retry, WSDL cache for DPD, considerably more unit
+tests and a CI pipeline (ruff + JSON checks). See ["Security"](#security) and
+["Quality assurance"](#quality-assurance).
+
 ⚠️ **Not yet tested live** (code deployed/validated, but not yet clicked through)
 - DPD pickup-date control + "Book for the whole week"
 - DHL return shipment (`services.dhlRetoure`, return label)
@@ -166,6 +174,11 @@ Button **"Book for the whole week"** (DPD only, saved draft) uses
 current shipment, one per business day of the current/next week (`Custom day` +
 computed date), and optionally books the label for each directly. If a single
 day fails, it's logged and the remaining days still go through.
+
+The endpoint is capped at **10 days per call** and rejects shipments whose
+carrier isn't DPD (`api.MAX_WEEK_SHIPMENTS`) – every day triggers a real,
+billable shipping order, and whitelisted endpoints can be called directly
+without going through the button.
 
 ### DHL – return shipment
 
@@ -384,7 +397,7 @@ products **when the recipient country is in the EU** – not outside the EU
 | --- | --- |
 | Login WSDL | `https://public-ws-stage.dpd.com/services/LoginService/V2_0/?wsdl` |
 | Shipment WSDL | `https://public-ws-stage.dpd.com/services/ShipmentService/V4_5/?wsdl` |
-| Test access | DELIS ID `sandboxdpd` / password `xMmshh1` |
+| Test access | DELIS ID `sandboxdpd`; the password is **not** in this repo – get it from DPD and put it into `.secrets/dpd_credentials.json` (see "Quickly loading test credentials") or straight into DPD Settings |
 | `sendingDepot` | comes from `getAuth` (don't set it yourself) |
 | Weight | grams rounded to 10 g (`300` = 3 kg) – the app converts from kg |
 
@@ -537,7 +550,7 @@ versand_integration/
 ├── absender.py          # Versandabsender/brand -> ResolvedAbsender (address, DHL billing no., return address)
 ├── tracking.py          # scheduler_events.hourly_long: poll_open_shipments()
 ├── api.py               # whitelisted: create_shipment_from_delivery_note(carrier, versandabsender),
-│                         # create_week_shipments(source, count) – 5x shipments for DPD week booking
+│                         # create_week_shipments(source, count) – DPD week booking, max. 10 days
 ├── setup/install.py     # custom fields (Versandabsender, tracking status), settings singletons
 ├── setup/letter_head.py # letterhead from Versandabsender onto SO/DN/SI
 ├── utils/credentials.py # .secrets/*.json -> settings (self-hosted only, for testing)
@@ -545,6 +558,8 @@ versand_integration/
                                      # Versandabsender, Versandsendung(+Paket, +Tracking Event),
                                      # DHL Abholauftrag(+Sendung)/DHL Abholort,
                                      # "Versand" workspace + number cards
+
+.github/workflows/ci.yml             # ruff + syntax + doctype JSON checks (no bench needed)
 ```
 
 Adding a new carrier = a new `carriers/<name>/` folder with a `BaseCarrier`
@@ -559,19 +574,39 @@ Settings doctype.
 * `.secrets/` is excluded via `.gitignore` – **never** commit real keys.
 * All API calls run server-side; the whitelisted methods check read/write
   permissions on `Delivery Note`/`Versandsendung` before a carrier order
-  (label purchase) is triggered.
+  (label purchase) is triggered. The settings actions ("Test connection",
+  "Refresh catalogue", "Load pickup locations", "Reconcile balance") require
+  **write** permission on the respective settings – they fire real API calls
+  with the stored credentials or create master data, so the read permission
+  that a whitelisted document method implies is not enough.
 * `create_label()` locks the shipment row (`for_update`) and re-reads the
   status fresh from the DB to prevent duplicate carrier orders from
-  concurrent calls (double-click, two tabs).
-* Text taken from carrier responses (error messages, tracking status) is
-  escaped before being shown in dialogs/notifications
-  (`frappe.utils.escape_html`).
+  concurrent calls (double-click, two tabs). The same protection applies one
+  level up: `create_shipment_from_delivery_note()` locks the delivery note
+  first and only **then** looks for an existing shipment – otherwise two
+  concurrent clicks create two shipments and buy two labels.
+* `create_week_shipments()` is capped at 10 days per call and only allowed
+  for DPD shipments – every day is a real, billable order.
+* Text taken from carrier responses (error messages, tracking status,
+  shipment numbers) is escaped before being shown in dialogs/notifications
+  (`frappe.utils.escape_html`), server-side as well as in the client script.
 * The freely editable `api_base_url` (Deutsche Post Settings) is restricted
   to `https://*.dhl.com`, so the client secret/wallet password can't
   accidentally be sent to a foreign host; stamp PDF downloads are restricted
-  to `https://*.deutschepost.de` with a size limit.
+  to `https://*.deutschepost.de` with a size limit. Shipment numbers are
+  URL-encoded before they go into a tracking path.
+* The DHL OAuth token cache is keyed by environment **and** credentials
+  (hashed key). Switching sandbox ↔ production or rotating a key therefore
+  takes effect immediately instead of sending a stale token for up to an
+  hour; on an HTTP 401 the token is discarded once and fetched again.
 * `Versandsendung.api_request`/`api_response` (contain plaintext recipient
   addresses) are `permlevel: 1` – only System/Stock Manager can see them.
+  The base64 labels are stripped from the DHL response before storing (they
+  are already attached as a private `File`), and both fields are capped at
+  100,000 characters.
+* A **disabled** `Versandabsender` is rejected even when it is set directly
+  on the shipment (e.g. inherited from the customer) – otherwise labels
+  would silently be printed for a brand someone deliberately retired.
 * **Role model (left as-is deliberately, please evaluate for your own
   setup):** the `Stock User` role is allowed to create, submit, and create
   labels for shipments – in Deutsche Post's production mode that also means
@@ -579,6 +614,36 @@ Settings doctype.
   should remove `create`/`write`/`submit` from that role in
   `Versandsendung`'s doctype permissions and grant a dedicated role instead
   (e.g. "Versand Manager").
+
+## Quality assurance
+
+Without a bench (pure code checks, also run by CI –
+`.github/workflows/ci.yml` on every push/PR to `main`):
+
+```bash
+ruff check versand_integration          # configuration in pyproject.toml
+python -m compileall -q versand_integration
+```
+
+CI additionally validates every doctype JSON and checks that `field_order`
+and `fields` match – the most common mistake when editing those JSONs by
+hand, which otherwise only shows up at `bench migrate`.
+
+The unit tests need a Frappe site and therefore run on the bench:
+
+```bash
+bench --site <site> run-tests --app versand_integration
+bench --site <site> run-tests --app versand_integration \
+  --module versand_integration.versand_integration.doctype.versandsendung.test_versandsendung
+```
+
+They cover what can be checked without carrier access: street/country/product
+resolution, weight logic, the generated DHL payload (including multi-parcel,
+incomplete sender, return without billing number), the tracking status logic
+(including the rule that "unknown" never overwrites a known status) and the
+DPD pickup-date calculation. One test compares the `tracking_status` select
+options in the doctype against the constants in `carriers/base.py` – if those
+drift apart, a `save()` would otherwise only fail at runtime.
 
 ## Support
 

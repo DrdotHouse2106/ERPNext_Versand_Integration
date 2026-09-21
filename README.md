@@ -52,6 +52,14 @@ Produktiv, siehe „Konfiguration" unten).
 - **Manuelle Versandsendung**: Empfänger aus dem Kundenstamm (Kunde → Adresse) statt
   Handeingabe übernehmbar
 
+🔧 **Zweite Review-Runde** (statisch geprüft, noch nicht durchgeklickt): Limit +
+Carrier-Prüfung für die Wochenbuchung, Sperre gegen doppelte Sendungen je Lieferschein,
+Schreibrechtsprüfung für die Settings-Aktionen, Base64-Etiketten raus aus dem
+API-Protokoll, Storno-Status wird jetzt wirklich gespeichert (`db_set`),
+umgebungs-/zugangsdatenabhängiger DHL-Token-Cache mit 401-Retry, WSDL-Cache für DPD,
+deutlich mehr Unit-Tests und eine CI (Ruff + JSON-Prüfung). Details siehe
+[„Sicherheit"](#sicherheit) und [„Qualitätssicherung"](#qualitätssicherung).
+
 ⚠️ **Noch nicht live getestet** (Code deployt/validiert, aber noch nicht durchgeklickt)
 - DPD-Abholtag-Steuerung + „Für die ganze Woche buchen"
 - DHL-Retoure (`services.dhlRetoure`, Rücksendeetikett)
@@ -157,6 +165,11 @@ Button **„Für die ganze Woche buchen"** (nur DPD, gespeicherter Entwurf) erze
 je eine pro Werktag der laufenden/nächsten Woche (`Wunschtag` + berechnetes Datum), und
 bucht optional direkt das Etikett für jede. Schlägt ein einzelner Tag fehl, wird das
 protokolliert, die übrigen Tage laufen trotzdem durch.
+
+Der Endpunkt ist auf **maximal 10 Tage pro Aufruf** begrenzt und lehnt Sendungen ab,
+deren Carrier nicht DPD ist (`api.MAX_WEEK_SHIPMENTS`) – jeder Tag löst einen echten,
+kostenpflichtigen Versandauftrag aus, und whitelisted Endpunkte sind auch ohne den
+Button direkt aufrufbar.
 
 ### DHL – Retoure
 
@@ -364,7 +377,7 @@ in der EU liegt** – außerhalb der EU nicht (dort ist ggf. Economy günstiger)
 | --- | --- |
 | Login-WSDL | `https://public-ws-stage.dpd.com/services/LoginService/V2_0/?wsdl` |
 | Shipment-WSDL | `https://public-ws-stage.dpd.com/services/ShipmentService/V4_5/?wsdl` |
-| Testzugang | DELIS-ID `sandboxdpd` / Passwort `xMmshh1` |
+| Testzugang | DELIS-ID `sandboxdpd`; das Passwort steht **nicht** im Repo – es kommt von DPD und gehört in `.secrets/dpd_credentials.json` (siehe „Testzugangsdaten schnell laden") bzw. direkt in die DPD Settings |
 | `sendingDepot` | kommt aus `getAuth` (nicht selbst setzen) |
 | Gewicht | Gramm auf 10 g gerundet (`300` = 3 kg) – die App rechnet aus kg um |
 
@@ -521,7 +534,7 @@ versand_integration/
 ├── absender.py          # Versandabsender/Marke -> ResolvedAbsender (Adresse, DHL-Abr.-Nr., Retourenadresse)
 ├── tracking.py          # scheduler_events.hourly_long: poll_open_shipments()
 ├── api.py               # whitelisted: create_shipment_from_delivery_note(carrier, versandabsender),
-│                         # create_week_shipments(source, count) – 5x Versandsendung für DPD-Wochenbuchung
+│                         # create_week_shipments(source, count) – DPD-Wochenbuchung, max. 10 Tage
 ├── setup/install.py     # Custom Fields (Versandabsender, Tracking-Status), Settings-Singletons
 ├── setup/letter_head.py # Briefkopf aus Versandabsender auf SO/DN/SI
 ├── utils/credentials.py # .secrets/*.json -> Settings (nur self-hosted, zum Testen)
@@ -529,6 +542,8 @@ versand_integration/
                                      # Versandabsender, Versandsendung(+Paket, +Tracking Event),
                                      # DHL Abholauftrag(+Sendung)/DHL Abholort,
                                      # Workspace „Versand" + Number Cards
+
+.github/workflows/ci.yml             # Ruff + Syntax + DocType-JSON-Prüfung (ohne Bench)
 ```
 
 Ein neuer Carrier = neuer Ordner `carriers/<name>/` mit einer `BaseCarrier`-Klasse,
@@ -542,18 +557,40 @@ die `LabelResult` zurückgibt, plus Eintrag in `registry.py` und ein Settings-Do
 * `.secrets/` ist per `.gitignore` ausgeschlossen – **niemals** echte Keys committen.
 * Alle API-Aufrufe laufen server-seitig; die whitelisted-Methoden prüfen
   Lese-/Schreibrechte auf `Delivery Note`/`Versandsendung`, bevor ein
-  Carrier-Auftrag (Etikettenkauf) ausgelöst wird.
+  Carrier-Auftrag (Etikettenkauf) ausgelöst wird. Auch die Settings-Aktionen
+  („Verbindung testen", „Katalog aktualisieren", „Abholorte laden",
+  „Saldo abgleichen") verlangen **Schreibrecht** auf den jeweiligen Settings –
+  sie lösen echte API-Aufrufe mit den hinterlegten Zugangsdaten aus bzw. legen
+  Stammdaten an, ein Leserecht (das eine whitelisted Dokumentmethode von sich
+  aus mitbringt) reicht dafür nicht.
 * `create_label()` sperrt die Sendungszeile (`for_update`) und prüft den
   Status frisch aus der DB, um doppelte Carrier-Aufträge durch parallele
-  Aufrufe (Doppelklick, zwei Tabs) zu verhindern.
-* Text aus Carrier-Antworten (Fehlermeldungen, Tracking-Status) wird vor
-  der Anzeige in Dialogen/Benachrichtigungen escaped (`frappe.utils.escape_html`).
+  Aufrufe (Doppelklick, zwei Tabs) zu verhindern. Derselbe Schutz greift eine
+  Ebene höher: `create_shipment_from_delivery_note()` sperrt zuerst den
+  Lieferschein und sucht **danach** nach einer vorhandenen Versandsendung –
+  sonst legen zwei parallele Klicks zwei Sendungen an und kaufen zwei Etiketten.
+* `create_week_shipments()` ist auf 10 Tage je Aufruf begrenzt und nur für
+  DPD-Sendungen zulässig – jeder Tag ist ein echter, kostenpflichtiger Auftrag.
+* Text aus Carrier-Antworten (Fehlermeldungen, Tracking-Status, Sendungsnummern)
+  wird vor der Anzeige in Dialogen/Benachrichtigungen escaped
+  (`frappe.utils.escape_html`), serverseitig wie im Client-Script.
 * Die frei editierbare `api_base_url` (Deutsche Post Settings) ist auf
   `https://*.dhl.com` beschränkt, damit Client Secret/Portokasse-Passwort
   nicht versehentlich an einen fremden Host geschickt werden; Marken-PDF-
   Downloads sind auf `https://*.deutschepost.de` mit Größenlimit begrenzt.
+  Sendungsnummern werden URL-kodiert, bevor sie in einen Tracking-Pfad gehen.
+* Der DHL-OAuth-Token-Cache hängt an Umgebung **und** Zugangsdaten (gehashter
+  Schlüssel). Ein Wechsel Sandbox ↔ Produktion oder eine Key-Rotation wirkt
+  damit sofort, statt bis zu einer Stunde lang ein altes Token weiterzuschicken;
+  auf ein HTTP 401 hin wird das Token einmal verworfen und neu geholt.
 * `Versandsendung.api_request`/`api_response` (enthalten Empfängeradressen
   im Klartext) sind `permlevel: 1` – nur System-/Stock Manager sehen sie.
+  Die Base64-Etiketten aus der DHL-Antwort werden vor dem Speichern entfernt
+  (sie hängen bereits als privates `File` am Dokument), und beide Felder sind
+  auf 100 000 Zeichen begrenzt.
+* Ein **deaktivierter** `Versandabsender` wird auch dann abgelehnt, wenn er
+  direkt an der Sendung hinterlegt ist (z. B. vom Kunden geerbt) – sonst würde
+  still mit einer stillgelegten Marke etikettiert.
 * **Rollenmodell (bewusst so belassen, bitte selbst bewerten):** die Rolle
   `Stock User` darf Versandsendungen anlegen, buchen und Etiketten
   erstellen – im Produktiv-Modus von Deutsche Post also auch echte
@@ -561,6 +598,37 @@ die `LabelResult` zurückgibt, plus Eintrag in `registry.py` und ein Settings-Do
   Rolle in den DocType-Berechtigungen von `Versandsendung` `create`/
   `write`/`submit` und vergibt stattdessen eine eigene Rolle (z. B.
   „Versand Manager").
+
+## Qualitätssicherung
+
+Ohne Bench (reine Code-Prüfung, läuft auch in der CI –
+`.github/workflows/ci.yml` bei jedem Push/PR auf `main`):
+
+```bash
+ruff check versand_integration          # Konfiguration in pyproject.toml
+python -m compileall -q versand_integration
+```
+
+Dazu prüft die CI jedes DocType-JSON auf Gültigkeit und darauf, dass
+`field_order` und `fields` deckungsgleich sind – der häufigste Fehler beim
+Bearbeiten der JSONs von Hand, der sonst erst bei `bench migrate` auffällt.
+
+Die Unit-Tests brauchen eine Frappe-Site und laufen deshalb auf der Bench:
+
+```bash
+bench --site <site> run-tests --app versand_integration
+bench --site <site> run-tests --app versand_integration \
+  --module versand_integration.versand_integration.doctype.versandsendung.test_versandsendung
+```
+
+Abgedeckt sind die Teile, die man ohne Carrier-Zugang prüfen kann: Straßen-/
+Länder-/Produkt-Auflösung, Gewichtslogik, der gebaute DHL-Payload (inkl.
+Mehrcolli, unvollständiger Absender, Retoure ohne Abrechnungsnummer), die
+Tracking-Statuslogik (darunter die Regel, dass „Unbekannt" einen bekannten
+Status nie überschreibt) und die DPD-Abholtag-Berechnung. Ein Test vergleicht
+außerdem die `tracking_status`-Auswahlwerte im DocType mit den Konstanten in
+`carriers/base.py` – laufen die auseinander, scheitert sonst erst zur Laufzeit
+ein `save()`.
 
 ## Unterstützung
 
