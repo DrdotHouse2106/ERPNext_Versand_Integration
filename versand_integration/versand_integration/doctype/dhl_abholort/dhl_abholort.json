@@ -1,0 +1,45 @@
+{
+ "actions": [],
+ "autoname": "Prompt",
+ "creation": "2026-09-21 12:00:00",
+ "description": "Vereinbarte DHL-Abholorte – Spiegelbild von GET /parcel/de/transportation/pickup/v3/locations. Über 'Abholorte aktualisieren' in den DHL Settings befüllen, nicht von Hand anlegen.",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "name1",
+  "street",
+  "house_number",
+  "column_break_addr",
+  "postal_code",
+  "city"
+ ],
+ "fields": [
+  {"fieldname": "title", "fieldtype": "Data", "label": "Bezeichnung", "read_only": 1, "in_list_view": 1},
+  {"fieldname": "name1", "fieldtype": "Data", "label": "Name", "read_only": 1},
+  {"fieldname": "street", "fieldtype": "Data", "label": "Straße", "read_only": 1, "in_list_view": 1},
+  {"fieldname": "house_number", "fieldtype": "Data", "label": "Hausnummer", "read_only": 1},
+  {"fieldname": "column_break_addr", "fieldtype": "Column Break"},
+  {"fieldname": "postal_code", "fieldtype": "Data", "label": "PLZ", "read_only": 1, "in_list_view": 1},
+  {"fieldname": "city", "fieldtype": "Data", "label": "Ort", "read_only": 1, "in_list_view": 1}
+ ],
+ "in_create": 0,
+ "links": [],
+ "modified": "2026-09-21 12:00:00",
+ "modified_by": "Administrator",
+ "module": "Versand Integration",
+ "name": "DHL Abholort",
+ "owner": "Administrator",
+ "permissions": [
+  {"create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "role": "System Manager", "share": 1, "write": 1},
+  {"create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "role": "Stock Manager", "share": 1, "write": 1},
+  {"read": 1, "role": "Stock User"}
+ ],
+ "show_title_field_in_link": 1,
+ "sort_field": "title",
+ "sort_order": "ASC",
+ "states": [],
+ "title_field": "title",
+ "track_changes": 0
+}

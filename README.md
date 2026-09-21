@@ -5,8 +5,8 @@ ohne Drittanbieter-Middleware.
 
 | Carrier | API | Stand |
 | --- | --- | --- |
-| **DHL** | Parcel DE Shipping v2 (REST, OAuth2/Basic) | ✅ live verifiziert: Etikett erstellen + stornieren |
-| **DPD** | DE WebConnect (SOAP: LoginService V2.0 + ShipmentService V4.5, via `zeep`) | Login + Sendung erstellen live verifiziert; Label-Extraktion gefixt, Re-Test nach nächstem Deploy ausstehend |
+| **DHL** | Parcel DE Shipping v2 (REST, OAuth2/Basic) + Retoure (services.dhlRetoure) + Paket DE Abholen v3 (Abholauftrag) | ✅ Etikett erstellen + stornieren live verifiziert; Retoure + Abholauftrag implementiert, noch nicht live getestet |
+| **DPD** | DE WebConnect (SOAP: LoginService V2.0 + ShipmentService V4.5, via `zeep`) | Login + Sendung erstellen live verifiziert; Abholtag-Steuerung (shippingDate) implementiert |
 | **Deutsche Post** | Internetmarke – neue REST-API „Post DE Internetmarke" (DHL Developer Portal, kein Partnervertrag mehr) | ✅ live verifiziert: Marken-Erstellung (Vorschau/Produktiv), Portokasse-Aufladung, optionale DATEV-Journalbuchungen |
 
 Geschrieben für **Frappe / ERPNext v15–v16**. Python-Abhängigkeit: `zeep` (SOAP, für DPD).
@@ -115,6 +115,56 @@ für immer aktiv, aber wirkungslos stehen zu lassen) – über
 `BaseCarrier.supports_tracking` (`False` bei `DeutschePostCarrier`). Ist eine
 Track-ID vorhanden, steht das im Statustext, Status lässt sich vorerst nur
 manuell bei der Post-/DHL-Sendungsverfolgung prüfen.
+
+---
+
+## Abholung (DPD/DHL) & DHL-Retoure
+
+### DPD – Abholtag steuern
+
+DPD hat keine eigene Abhol-API – der Abholtag wird direkt im `ShipmentService`-Aufruf
+über `<shippingDate>` gesetzt (`carriers/dpd/pickup.py:resolve_shipping_date`). An der
+Versandsendung (Carrier DPD) steht dazu das Feld **„Abholtag"**:
+
+* *(leer)* – kein `shippingDate` gesetzt, DPD nimmt den nächsten Werktag.
+* **Morgen** / **Übermorgen** – auf Sonntag automatisch auf Montag verschoben.
+* **Wunschtag** – konkretes Datum im Feld „Abholtag (Datum)".
+
+Button **„Für die ganze Woche buchen"** (nur DPD, gespeicherter Entwurf) erzeugt über
+`versand_integration.api.create_week_shipments` fünf Kopien der aktuellen Versandsendung,
+je eine pro Werktag der laufenden/nächsten Woche (`Wunschtag` + berechnetes Datum), und
+bucht optional direkt das Etikett für jede. Schlägt ein einzelner Tag fehl, wird das
+protokolliert, die übrigen Tage laufen trotzdem durch.
+
+### DHL – Retoure
+
+Checkbox **„DHL-Retoure"** an der Versandsendung (nur DHL) fügt dem `/orders`-Aufruf den
+Service `dhlRetoure` hinzu; DHL liefert dann neben dem normalen Label ein zweites
+Retourenlabel zurück, das an `return_label_file` abgelegt wird (Button „Retourenlabel
+öffnen"). Die Abrechnungsnummer fürs Retourenverfahren (Verfahren 08) kommt – wie bei
+den anderen DHL-Produkten – über die Absender-Auflösungskette: `Versandabsender`-Override
+→ `DHL Settings.billing_number_return` als Fallback.
+
+### DHL – Abholauftrag
+
+Eigenständiges DocType **DHL Abholauftrag** (Paket DE Abholen v3, gleicher OAuth2-Client
+wie die Shipping-API) für die Beauftragung einer Abholung, unabhängig von einzelnen
+Versandsendungen:
+
+* **Abholart „Beliebige Adresse"** – Adresse frei eintragen (oder aus dem
+  `Versandabsender` übernehmen); DHL kann dafür laut Spezifikation auch dann Kosten
+  berechnen, wenn die Abholung nicht klappt.
+* **Abholart „Vereinbarter Abholort"** – Auswahl aus **DHL Abholort** (Stammdaten via
+  `GET /locations`, Button „Abholorte aktualisieren" in den **DHL Settings**).
+* Sendungen (Child-Tabelle) mit optionaler Größe (S/M/L) und Kundenreferenz je Colli.
+* Buttons **„Abholung beauftragen"** (`POST /orders`), **„Status abfragen"**
+  (`GET /orders`), **„Stornieren"** (`DELETE /orders`) – API-Antworten landen im
+  Abschnitt „API-Protokoll" (nur Administrator/Stock Manager sichtbar, wie beim
+  API-Protokoll der Versandsendung).
+
+Noch nicht live getestet (Feature ist neu bei DHL im Developer-Portal freigeschaltet
+worden) – vor dem ersten produktiven Einsatz einmal im Sandbox- oder mit „Beliebige
+Adresse" vorsichtig gegen die echte API prüfen.
 
 ---
 

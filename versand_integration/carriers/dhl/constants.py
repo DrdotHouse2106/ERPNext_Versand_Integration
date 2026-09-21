@@ -10,6 +10,12 @@ PRODUCTION_BASE_URL = "https://api-eu.dhl.com/parcel/de/shipping/v2"
 SANDBOX_TOKEN_URL = "https://api-sandbox.dhl.com/parcel/de/account/auth/ropc/v1/token"
 PRODUCTION_TOKEN_URL = "https://api-eu.dhl.com/parcel/de/account/auth/ropc/v1/token"
 
+# --- DHL Paket DE Abholen (Pickup) API v3 -----------------------------------
+# Doku: https://developer.dhl.com/api-reference/parcel-de-pickup-post-parcel-germany
+# Gleicher OAuth2-Token wie Shipping (selbe App/derselbe Token-Endpunkt).
+PICKUP_SANDBOX_BASE_URL = "https://api-sandbox.dhl.com/parcel/de/transportation/pickup/v3"
+PICKUP_PRODUCTION_BASE_URL = "https://api-eu.dhl.com/parcel/de/transportation/pickup/v3"
+
 # --- Sandbox-Testzugang (öffentlich dokumentiert) -------------------------
 # Klassischer Basic-Auth-Benutzer der Sandbox.
 SANDBOX_GKP_USERNAME = "sandy_sandbox"

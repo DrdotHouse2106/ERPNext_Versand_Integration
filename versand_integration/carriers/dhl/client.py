@@ -41,6 +41,7 @@ class DHLClient:
 
 		self.print_format = C.resolve_print_format(settings.print_format) or C.DEFAULT_PRINT_FORMAT
 		self.doc_format = settings.doc_format or C.DEFAULT_DOC_FORMAT
+		self.pickup_base_url = C.PICKUP_SANDBOX_BASE_URL if self.sandbox else C.PICKUP_PRODUCTION_BASE_URL
 
 	# ------------------------------------------------------------------ auth
 	def _check_config(self):
@@ -102,9 +103,9 @@ class DHLClient:
 		return headers
 
 	# ------------------------------------------------------------- requests
-	def _request(self, method: str, path: str, *, params=None, json_body=None) -> dict:
+	def _request(self, method: str, path: str, *, params=None, json_body=None, base_url=None) -> dict:
 		self._check_config()
-		url = f"{self.base_url}{path}"
+		url = f"{base_url or self.base_url}{path}"
 		try:
 			resp = requests.request(
 				method,
@@ -168,6 +169,31 @@ class DHLClient:
 			"/orders",
 			params={"shipment": shipment_number, "profile": profile or C.DEFAULT_PROFILE},
 		)
+
+	# --------------------------------------------------------- Pickup API v3
+	def order_pickup(self, payload: dict, *, validate_only: bool = False) -> dict:
+		params = {"validate": "true"} if validate_only else None
+		return self._request(
+			"POST", "/orders", params=params, json_body=payload, base_url=self.pickup_base_url
+		)
+
+	def cancel_pickup(self, order_ids: list[str]) -> dict:
+		return self._request(
+			"DELETE", "/orders", params={"orderID": order_ids}, base_url=self.pickup_base_url
+		)
+
+	def get_pickup_orders(self, *, order_id: str | None = None, pickup_date: str | None = None) -> list:
+		params = {}
+		if order_id:
+			params["orderID"] = order_id
+		if pickup_date:
+			params["pickupDate"] = pickup_date
+		body = self._request("GET", "/orders", params=params, base_url=self.pickup_base_url)
+		return body if isinstance(body, list) else []
+
+	def get_pickup_locations(self) -> list:
+		body = self._request("GET", "/locations", base_url=self.pickup_base_url)
+		return body if isinstance(body, list) else []
 
 	def test_connection(self) -> dict:
 		"""Validierungs-Aufruf (validate=true) mit einer Sandbox-Testsendung."""

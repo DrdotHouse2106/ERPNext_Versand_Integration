@@ -8,6 +8,8 @@
  "items": [
   {"label": "Home", "type": "Link", "link_type": "Workspace", "link_to": "Versand"},
   {"label": "Versandsendungen", "type": "Link", "link_type": "DocType", "link_to": "Versandsendung"},
+  {"label": "DHL Abholaufträge", "type": "Link", "link_type": "DocType", "link_to": "DHL Abholauftrag"},
+  {"label": "DHL Abholorte", "type": "Link", "link_type": "DocType", "link_to": "DHL Abholort"},
   {"label": "Versandabsender", "type": "Link", "link_type": "DocType", "link_to": "Versandabsender"},
   {"label": "DHL Settings", "type": "Link", "link_type": "DocType", "link_to": "DHL Settings"},
   {"label": "DPD Settings", "type": "Link", "link_type": "DocType", "link_to": "DPD Settings"},
