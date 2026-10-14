@@ -129,6 +129,15 @@ submitted → `on_cancel()` calls `carrier.cancel_label()`. Carrier-specific
 Settings lookups (auto_submit, validate_only) go through
 `_carrier_settings()`/`_SETTINGS_DOCTYPE`, not a hardcoded DHL reference.
 
+Carrier-filled fields (`status`, `shipment_number`, `tracking_url`,
+`label_file`, … see `_CARRIER_FIELDS`) are only UI-`read_only`; Frappe does
+not enforce that server-side. `validate()` therefore runs
+`_protect_carrier_fields()`: unless `self.flags.from_carrier` is set (only
+`create_label()` sets it), new docs get these fields reset and existing docs
+get them re-read from the database, so a REST `PUT` can neither forge a
+booked shipment nor inject a `javascript:` tracking URL. `before_submit()`
+additionally requires a `File` attached to the document for `label_file`.
+
 `create_label()`/`refresh_tracking()` are whitelisted Document methods, so
 being callable via `frm.call({doc, method})` only implies read access —
 both start with `self.check_permission("write")` since they trigger real

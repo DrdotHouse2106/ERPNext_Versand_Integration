@@ -15,7 +15,7 @@ frappe.ui.form.on("DHL Abholauftrag", {
 						}).then((r) => {
 							if (r.message) {
 								frappe.show_alert({
-									message: __("Order-ID {0}", [r.message.order_id]),
+									message: __("Order-ID {0}", [frappe.utils.escape_html(r.message.order_id || "")]),
 									indicator: "green",
 								});
 								frm.reload_doc();
@@ -36,7 +36,7 @@ frappe.ui.form.on("DHL Abholauftrag", {
 				}).then((r) => {
 					if (r.message) {
 						frappe.show_alert({
-							message: __("DHL-Status: {0}", [r.message.order_state || "?"]),
+							message: __("DHL-Status: {0}", [frappe.utils.escape_html(r.message.order_state || "?")]),
 							indicator: "blue",
 						});
 						frm.reload_doc();

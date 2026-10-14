@@ -6,7 +6,7 @@ frappe.ui.form.on("DPD Settings", {
 					frappe.msgprint({
 						title: __("DPD Verbindung OK"),
 						indicator: "green",
-						message: (r.message.messages || []).join("<br>"),
+						message: (r.message.messages || []).map((m) => frappe.utils.escape_html(m)).join("<br>"),
 					});
 				}
 			});

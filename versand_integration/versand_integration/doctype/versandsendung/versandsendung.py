@@ -25,6 +25,23 @@ STATUS_ERROR = "Fehler"
 # und Backups je Sendung um hunderte KB auf.
 _MAX_API_LOG_CHARS = 100000
 
+# Felder, die ausschliesslich der Carrier-Pfad (create_label/_apply_label_result)
+# befuellen darf. `read_only` im DocType ist nur eine UI-Eigenschaft - per REST
+# oder frm.call({doc}) kommen diese Werte sonst ungeprueft vom Client und
+# landen ueber on_submit im Lieferschein (z. B. eine javascript:-Tracking-URL
+# oder eine erfundene Sendungsnummer ohne Carrier-Auftrag).
+_CARRIER_FIELDS = (
+	"status",
+	"shipment_number",
+	"tracking_number",
+	"tracking_url",
+	"label_file",
+	"return_label_file",
+	"error_message",
+	"api_request",
+	"api_response",
+)
+
 
 def _api_log(payload) -> str | None:
 	"""Request/Response fuer die API-Protokollfelder serialisieren (gekuerzt)."""
@@ -40,6 +57,7 @@ def _api_log(payload) -> str | None:
 class Versandsendung(Document):
 	# ------------------------------------------------------------- lifecycle
 	def validate(self):
+		self._protect_carrier_fields()
 		self._sync_from_delivery_note()
 		self._split_street()
 		self._ensure_weight()
@@ -51,6 +69,18 @@ class Versandsendung(Document):
 			frappe.throw(
 				_("Bitte zuerst über »Etikett erstellen« ein Versandetikett erzeugen.")
 			)
+		# Das Etikett muss als File an genau diesem Dokument haengen - sonst
+		# liesse sich eine Sendung mit per REST gesetztem Status "buchen", ohne
+		# dass je ein Carrier-Auftrag stattgefunden hat.
+		if not self.label_file or not frappe.db.exists(
+			"File",
+			{
+				"file_url": self.label_file,
+				"attached_to_doctype": self.doctype,
+				"attached_to_name": self.name,
+			},
+		):
+			frappe.throw(_("Zu dieser Sendung ist kein vom Carrier erzeugtes Etikett hinterlegt."))
 
 	def on_submit(self):
 		self._write_back_to_delivery_note()
@@ -72,10 +102,32 @@ class Versandsendung(Document):
 		self._clear_delivery_note_backref()
 
 	# ------------------------------------------------------------- prefill
+	def _protect_carrier_fields(self):
+		"""Carrier-befuellte Felder gegen Client-Werte absichern.
+
+		Nur der Carrier-Pfad (Flag `from_carrier`) darf sie setzen. Bei neuen
+		Dokumenten werden sie auf den Anfangszustand gesetzt, bei bestehenden
+		gilt der Stand aus der Datenbank.
+		"""
+		if self.flags.from_carrier:
+			return
+		if self.is_new():
+			self.status = STATUS_DRAFT
+			for field in _CARRIER_FIELDS[1:]:
+				self.set(field, None)
+			return
+		stored = frappe.db.get_value(self.doctype, self.name, list(_CARRIER_FIELDS), as_dict=True)
+		if stored:
+			for field in _CARRIER_FIELDS:
+				self.set(field, stored.get(field))
+
 	def _sync_from_delivery_note(self):
 		if not self.delivery_note:
 			return
 		dn = frappe.get_doc("Delivery Note", self.delivery_note)
+		# Wer eine Versandsendung direkt anlegt, darf darueber nicht Kunden- und
+		# Adressdaten eines Lieferscheins lesen, den er selbst nicht sehen darf.
+		frappe.has_permission("Delivery Note", "read", doc=dn, throw=True)
 		self.customer = dn.customer
 		self.customer_name = dn.customer_name
 		if not self.versandabsender:
@@ -148,10 +200,13 @@ class Versandsendung(Document):
 			)
 			if current_status == STATUS_CREATED and current_shipment_number:
 				frappe.throw(_("Für diese Sendung existiert bereits ein Etikett ({0}).").format(
-					current_shipment_number
+					escape_html(current_shipment_number)
 				))
 
 		carrier = get_carrier(self.carrier)
+		# Ab hier schreibt der Carrier-Pfad die geschuetzten Felder (siehe
+		# _protect_carrier_fields) - fuer die folgenden save()-Aufrufe freigeben.
+		self.flags.from_carrier = True
 		try:
 			result: LabelResult = carrier.create_label(self)
 		except CarrierError as exc:
@@ -217,7 +272,7 @@ class Versandsendung(Document):
 		self.error_message = None
 		self.shipment_number = result.shipment_number
 		self.tracking_number = result.tracking_number
-		self.tracking_url = result.tracking_url
+		self.tracking_url = _safe_tracking_url(result.tracking_url)
 		self.api_request = _api_log(result.raw_request)
 		self.api_response = _api_log(result.raw_response)
 
@@ -266,7 +321,12 @@ class Versandsendung(Document):
 
 	# ---------------------------------------------------------- tracking
 	@frappe.whitelist()
-	def refresh_tracking(self, commit: bool = False):
+	def refresh_tracking(self):
+		"""Button »Tracking aktualisieren«. Ohne Parameter, damit `commit`
+		nicht ueber /api/method von aussen steuerbar ist."""
+		return self._refresh_tracking()
+
+	def _refresh_tracking(self, commit: bool = False):
 		self.check_permission("write")
 		if not (self.shipment_number or self.tracking_number):
 			frappe.throw(_("Für diese Sendung gibt es noch keine Sendungsnummer."))
@@ -383,6 +443,17 @@ class Versandsendung(Document):
 				{"vi_versandsendung": None, "vi_sendungsnummer": None, "vi_tracking_url": None},
 				update_modified=False,
 			)
+
+
+def _safe_tracking_url(url: str | None) -> str | None:
+	"""Nur https-URLs werden als Tracking-Link uebernommen - alles andere
+	(z. B. ein javascript:-Schema) wird verworfen und protokolliert."""
+	if not url:
+		return None
+	if url.lower().startswith("https://"):
+		return url
+	frappe.log_error(title="Versand: ungültige Tracking-URL verworfen", message=url[:500])
+	return None
 
 
 def _format_error(exc: CarrierError) -> str:

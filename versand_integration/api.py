@@ -92,6 +92,9 @@ def create_week_shipments(source: str, create_label: int = 1, count: int = 5):
 	"""
 	from versand_integration.carriers.dpd.pickup import next_business_days
 
+	# Quellsendung bis zum Transaktionsende sperren: zwei parallele Aufrufe
+	# wuerden sonst beide bis zu `count` Etiketten kaufen.
+	frappe.db.get_value("Versandsendung", source, "name", for_update=True)
 	src = frappe.get_doc("Versandsendung", source)
 	src.check_permission("read")
 	if not frappe.has_permission("Versandsendung", "create"):

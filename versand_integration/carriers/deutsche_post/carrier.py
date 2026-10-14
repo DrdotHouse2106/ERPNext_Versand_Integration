@@ -78,7 +78,9 @@ class DeutschePostCarrier(BaseCarrier):
 		link = response.get("link")
 		if not link:
 			frappe.throw(
-				_("Internetmarke: Antwort enthielt keinen Link zur Marke: {0}").format(response)
+				_("Internetmarke: Antwort enthielt keinen Link zur Marke: {0}").format(
+					frappe.utils.escape_html(str(response))[:500]
+				)
 			)
 		label_bytes = client.download_pdf(link)
 

@@ -58,7 +58,7 @@ def poll_open_shipments():
 				)
 				frappe.db.commit()
 				continue
-			doc.refresh_tracking(commit=True)
+			doc._refresh_tracking(commit=True)
 		except Exception:  # noqa: BLE001
 			frappe.db.rollback()
 			frappe.log_error(title=f"Tracking-Poll {name}")

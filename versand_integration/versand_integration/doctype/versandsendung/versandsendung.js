@@ -1,3 +1,14 @@
+// Nur Links oeffnen, die vom Carrier bzw. vom Datei-Upload stammen koennen:
+// https-URLs und private Dateianhaenge. Ein per REST gesetztes javascript:-
+// Schema wuerde sonst im Desk-Origin ausgefuehrt.
+function vi_safe_open(url) {
+	if (typeof url === "string" && (/^https:\/\//i.test(url) || url.startsWith("/private/files/"))) {
+		window.open(url, "_blank");
+	} else {
+		frappe.show_alert({ message: __("Link wurde nicht geöffnet (unzulässiges Format)."), indicator: "red" });
+	}
+}
+
 frappe.ui.form.on("Versandsendung", {
 	refresh(frm) {
 		frm.set_df_property("packages", "cannot_add_rows", frm.doc.status === "Etikett erstellt");
@@ -48,7 +59,9 @@ frappe.ui.form.on("Versandsendung", {
 			});
 		}
 
-		if (frm.doc.docstatus === 0 && frm.doc.status !== "Etikett erstellt") {
+		// Erst nach dem ersten Speichern: nur fuer eine gespeicherte Sendung
+		// greift serverseitig die Zeilensperre gegen doppelte Etikettkaeufe.
+		if (!frm.is_new() && frm.doc.docstatus === 0 && frm.doc.status !== "Etikett erstellt") {
 			frm.add_custom_button(__("Etikett erstellen"), () => {
 				frm.call({
 					doc: frm.doc,
@@ -65,7 +78,7 @@ frappe.ui.form.on("Versandsendung", {
 						});
 						frm.reload_doc();
 						if (r.message.label_file) {
-							window.open(r.message.label_file, "_blank");
+							vi_safe_open(r.message.label_file);
 						}
 					}
 				});
@@ -73,15 +86,13 @@ frappe.ui.form.on("Versandsendung", {
 		}
 
 		if (frm.doc.label_file) {
-			frm.add_custom_button(__("Etikett öffnen"), () => window.open(frm.doc.label_file, "_blank"));
+			frm.add_custom_button(__("Etikett öffnen"), () => vi_safe_open(frm.doc.label_file));
 		}
 		if (frm.doc.return_label_file) {
-			frm.add_custom_button(__("Retourenlabel öffnen"), () =>
-				window.open(frm.doc.return_label_file, "_blank")
-			);
+			frm.add_custom_button(__("Retourenlabel öffnen"), () => vi_safe_open(frm.doc.return_label_file));
 		}
 		if (frm.doc.tracking_url) {
-			frm.add_custom_button(__("Sendung verfolgen"), () => window.open(frm.doc.tracking_url, "_blank"));
+			frm.add_custom_button(__("Sendung verfolgen"), () => vi_safe_open(frm.doc.tracking_url));
 		}
 
 		if (frm.doc.shipment_number && frm.doc.carrier !== "Deutsche Post") {

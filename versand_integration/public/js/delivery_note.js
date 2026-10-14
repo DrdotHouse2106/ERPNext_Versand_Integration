@@ -1,3 +1,14 @@
+// Nur Links oeffnen, die vom Carrier bzw. vom Datei-Upload stammen koennen:
+// https-URLs und private Dateianhaenge. Ein per REST gesetztes javascript:-
+// Schema wuerde sonst im Desk-Origin ausgefuehrt.
+function vi_safe_open(url) {
+	if (typeof url === "string" && (/^https:\/\//i.test(url) || url.startsWith("/private/files/"))) {
+		window.open(url, "_blank");
+	} else {
+		frappe.show_alert({ message: __("Link wurde nicht geöffnet (unzulässiges Format)."), indicator: "red" });
+	}
+}
+
 frappe.ui.form.on("Delivery Note", {
 	refresh(frm) {
 		if (frm.doc.docstatus !== 1) return;
@@ -11,7 +22,7 @@ frappe.ui.form.on("Delivery Note", {
 			if (frm.doc.vi_tracking_url) {
 				frm.add_custom_button(
 					__("Sendung verfolgen"),
-					() => window.open(frm.doc.vi_tracking_url, "_blank"),
+					() => vi_safe_open(frm.doc.vi_tracking_url),
 					__("Versand")
 				);
 			}
@@ -79,7 +90,7 @@ function choose_carrier_and_create(frm) {
 						indicator: res.status === "Etikett erstellt" ? "green" : "orange",
 					});
 					frm.reload_doc();
-					if (res.label_file) window.open(res.label_file, "_blank");
+					if (res.label_file) vi_safe_open(res.label_file);
 					else frappe.set_route("Form", "Versandsendung", res.name);
 				},
 			});
