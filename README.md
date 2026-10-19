@@ -638,6 +638,22 @@ Wenn dir dieses Plugin Arbeit erspart: Ich freue mich über eine freiwillige
 Spende via [PayPal.me/DrdotHouse](https://paypal.me/DrdotHouse) – keine
 Verpflichtung, kein Support-Anspruch, einfach eine nette Geste.
 
+### Für Unternehmen: Unterstützung für die Weiterentwicklung
+
+Ihr setzt das Projekt im Betrieb ein und möchtet die Weiterentwicklung unterstützen? Gern auch
+**mit Rechnung** – einmalig oder **monatlich**. Auf Wunsch nenne ich euch hier unter
+„Unterstützer“ mit Firmenname und Link.
+
+Bitte beachtet: Ich bin kein Profi-Entwickler, das Projekt ist mein Hobby. Eine Unterstützung
+ist deshalb kein Supportvertrag – Support, Reaktionszeiten oder Gewährleistung kann ich nicht
+anbieten. Wünsche und Verbesserungsvorschläge nehme ich aber gerne mit auf.
+
+Kontakt: [info@francetec.de](mailto:info@francetec.de)
+
+#### Unterstützer
+
+*Noch keine – über euren Namen hier würde ich mich freuen.*
+
 ## Lizenz
 
 MIT
