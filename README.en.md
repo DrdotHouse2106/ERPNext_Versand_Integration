@@ -1,5 +1,7 @@
 # ERPNext Versand Integration
 
+[![Buy me a coffee](https://img.shields.io/badge/☕_Buy_me_a_coffee-PayPal-0070ba?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/DrdotHouse)
+
 *[Deutsche Version](README.md)*
 
 Frappe/ERPNext app for generating **shipping labels directly through the carrier
